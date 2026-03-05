@@ -174,7 +174,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqs_2wiRdnVsJ9onJaq7xyqCxM0jjzpW4",
@@ -191,7 +191,7 @@
         const defisRef = collection(db, "defis");
         
         let monProfil = JSON.parse(localStorage.getItem('doab_profil'));
-        let mesAmis = JSON.parse(localStorage.getItem('doab_amis')) || [];
+        let mesAmis = []; // Désormais chargé depuis Firebase, plus depuis le LocalStorage !
         let cibleActuelle = null;
         let tempsStatique = 3;
 
@@ -221,12 +221,13 @@
         document.getElementById('btnAllerInscription').onclick = () => changerEcran('ecranInscription');
         document.querySelectorAll('.btn-retour').forEach(b => b.onclick = () => changerEcran('ecranAccueil'));
 
+        // INSCRIPTION (Initialisation d'un tableau vide 'amis')
         document.getElementById('btnCreerProfil').onclick = async () => {
             const nom = document.getElementById('monNom').value.trim();
             const tel = document.getElementById('monTel').value.trim();
             const mdp = document.getElementById('monMdp').value.trim();
             if(!nom || !tel || mdp.length < 4) return alert("Champs incomplets");
-            await addDoc(colRef, { nom, nomLower: nom.toLowerCase(), tel, mdp });
+            await addDoc(colRef, { nom, nomLower: nom.toLowerCase(), tel, mdp, amis: [] });
             alert("Compte créé !");
             changerEcran('ecranConnexion');
         };
@@ -243,16 +244,25 @@
             location.reload();
         };
 
+        // AJOUTER UN AMI ET SAUVEGARDER SUR FIREBASE
         document.getElementById('btnAjouterAmi').onclick = async () => {
             const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
             const q = query(colRef, where("nomLower", "==", pseudo));
             const snap = await getDocs(q);
             if(snap.empty) return alert("Inconnu");
+            
             const u = snap.docs[0].data();
-            if(!mesAmis.find(a => a.id === snap.docs[0].id) && u.nom.toLowerCase() !== monProfil.nom.toLowerCase()) {
-                mesAmis.push({ id: snap.docs[0].id, nom: u.nom, tel: u.tel });
-                localStorage.setItem('doab_amis', JSON.stringify(mesAmis));
+            const amiId = snap.docs[0].id;
+
+            if(!mesAmis.find(a => a.id === amiId) && u.nom.toLowerCase() !== monProfil.nom.toLowerCase()) {
+                const nouvelAmi = { id: amiId, nom: u.nom, tel: u.tel };
+                mesAmis.push(nouvelAmi);
+                
+                // Mettre à jour Firebase avec la nouvelle liste d'amis
+                await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
                 renderListeAmi();
+            } else {
+                alert("Cet utilisateur est déjà dans votre liste, ou c'est vous-même !");
             }
             document.getElementById('recherchePseudo').value = "";
         };
@@ -278,7 +288,11 @@
             document.getElementById('valStatique').innerText = tempsStatique;
             document.getElementById('defiModal').style.display = "flex";
         };
-        window.ajouterMinute = () => { tempsStatique++; document.getElementById('valStatique').innerText = tempsStatique; };
+
+        window.ajouterMinute = () => {
+            tempsStatique++;
+            document.getElementById('valStatique').innerText = tempsStatique;
+        };
 
         window.envoyerDefi = async (type) => {
             try {
@@ -343,39 +357,43 @@
             else { badge.style.display = "none"; }
         }
 
-        if(monProfil && monProfil.nom) {
+        // INITIALISATION AVEC ÉCOUTE DE LA LISTE D'AMIS EN TEMPS RÉEL
+        if(monProfil && monProfil.nom && monProfil.id) {
             document.getElementById('titreBonjour').innerText = "Salut " + monProfil.nom;
             changerOnglet('ecranChallengers'); 
             document.getElementById('navBar').style.display = 'flex'; 
 
-            // SYNCHRONISATION INTELLIGENTE DES AMIS
-            // S'assure que si un ami a changé de pseudo, la liste se met à jour
-            getDocs(colRef).then(snap => {
-                let aChange = false;
-                snap.forEach(doc => {
-                    let ami = mesAmis.find(a => a.id === doc.id);
-                    if(ami && (ami.nom !== doc.data().nom || ami.tel !== doc.data().tel)) {
-                        ami.nom = doc.data().nom;
-                        ami.tel = doc.data().tel;
-                        aChange = true;
-                    }
-                });
-                if(aChange) localStorage.setItem('doab_amis', JSON.stringify(mesAmis));
-                renderListeAmi();
-            });
-
-            // CHARGER LES DONNÉES DU PROFIL DANS L'ONGLET STATS
-            getDocs(query(colRef, where("nomLower", "==", monProfil.nom.toLowerCase()))).then(s => {
-                if(!s.empty) {
-                    const u = s.docs[0].data();
-                    document.getElementById('editNom').value = u.nom;
-                    document.getElementById('editTel').value = u.tel;
-                    document.getElementById('editMdp').value = u.mdp;
-                    monProfil.id = s.docs[0].id; // Sécurité
-                    localStorage.setItem('doab_profil', JSON.stringify(monProfil));
+            // TÉLÉCHARGEMENT DE LA LISTE D'AMIS DEPUIS FIREBASE
+            const monDocRef = doc(db, "challengers", monProfil.id);
+            onSnapshot(monDocRef, (docSnap) => {
+                if(docSnap.exists()) {
+                    const data = docSnap.data();
+                    mesAmis = data.amis || []; // Si la liste 'amis' n'existe pas encore, on met un tableau vide
+                    
+                    // On pré-remplit les stats aussi
+                    document.getElementById('editNom').value = data.nom;
+                    document.getElementById('editTel').value = data.tel;
+                    document.getElementById('editMdp').value = data.mdp;
+                    
+                    // Vérification de synchronisation : Si un ami a changé de nom ou numéro
+                    getDocs(colRef).then(snapChallengers => {
+                        let aChange = false;
+                        snapChallengers.forEach(docC => {
+                            let ami = mesAmis.find(a => a.id === docC.id);
+                            if(ami && (ami.nom !== docC.data().nom || ami.tel !== docC.data().tel)) {
+                                ami.nom = docC.data().nom;
+                                ami.tel = docC.data().tel;
+                                aChange = true;
+                            }
+                        });
+                        // Si des amis ont mis à jour leur profil, on met à jour notre propre liste Firebase
+                        if(aChange) updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
+                        renderListeAmi();
+                    });
                 }
             });
 
+            // Écoute des Défis
             const qDefisRecus = query(defisRef, where("pour", "==", monProfil.nom));
             onSnapshot(qDefisRecus, (snap) => {
                 defisActiveRecus = [];
@@ -413,7 +431,7 @@
                     if(!snapCheck.empty) return alert("Ce pseudo est déjà pris !");
                 }
 
-                // 1. Mise à jour du profil
+                // Mise à jour des informations
                 await updateDoc(doc(db, "challengers", monProfil.id), {
                     nom: newNom,
                     nomLower: newNom.toLowerCase(),
@@ -421,7 +439,7 @@
                     mdp: newMdp
                 });
 
-                // 2. Si le pseudo a changé, on met à jour l'historique de ses défis
+                // Si le pseudo change, on actualise l'historique des défis pour ne rien perdre
                 if(newNom !== monProfil.nom) {
                     const qDe = query(defisRef, where("de", "==", monProfil.nom));
                     const snapDe = await getDocs(qDe);
