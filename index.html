@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOAB - Arène</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; padding-bottom: 80px; background-color: #121212; color: #ffffff; margin: 0; }
+        h1, h2 { text-align: center; color: #ffeb3b; margin: 5px 0; }
+        p { text-align: center; color: #aaa; margin-bottom: 20px; }
+        
+        .ecran { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 500px; margin: 0 auto; }
+        .ecran.actif { display: flex; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 10px; }
+        input { padding: 12px; border: none; border-radius: 5px; background: #333; color: white; font-size: 16px; flex: 1; }
+        button { padding: 12px 20px; background-color: #ffeb3b; color: #121212; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+        .btn-secondaire { background-color: #333; color: white; margin-top: 10px; }
+        .btn-update { background-color: #03a9f4; color: white; }
+        
+        ul { list-style-type: none; padding: 0; width: 100%; }
+        li { background: #222; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #ffeb3b; }
+        
+        .defi-item { border-left-width: 6px; flex-direction: column; align-items: flex-start; }
+        .defi-attente { border-left-color: #ffeb3b; }
+        .defi-en-cours { border-left-color: #ff9800; background: #2d2315; }
+        .defi-envoye { border-left-color: #03a9f4; background: #1a2529; }
+        .defi-termine { border-left-color: #28a745; background: #15271a; }
+        
+        .section-titre { width: 100%; color: #ffeb3b; border-bottom: 1px solid #333; margin-top: 20px; padding-bottom: 5px; font-weight: bold; font-size: 18px; }
+        .badge { background: #ff3b30; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-left: 5px; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 1000;}
+        .modal-content { position: relative; background: #222; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 350px; border: 2px solid #ffeb3b; }
+        .option-defi { background: #333; padding: 15px; margin: 10px 0; border-radius: 10px; cursor: pointer; }
+        .btn-fermer-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #aaa; cursor: pointer; line-height: 1; }
+        
+        .nav-bottom { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; border-top: 1px solid #333; z-index: 500; }
+        .nav-bottom button { flex: 1; background: transparent; color: #aaa; border-radius: 0; padding: 15px 5px; font-size: 14px; border: none; outline: none; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .nav-bottom button.actif { color: #ffeb3b; }
+        .nav-icon { font-size: 20px; }
+        
+        .vide-msg { text-align: center; color: #666; font-style: italic; margin-top: 20px; width: 100%; }
+        .stat-box { background: #222; margin-top: 20px; padding: 25px; border-radius: 10px; width: 80%; text-align: center; border: 1px solid #333; }
+        .stat-number { font-size: 36px; font-weight: bold; color: #ffeb3b; margin-bottom: 5px; }
+        .stat-label { color: #aaa; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+    <div id="ecranAccueil" class="ecran actif">
+        <h1 style="font-size: 40px; margin-top: 50px;">DOAB</h1>
+        <p>L'arène de musculation</p>
+        <div class="form-group">
+            <button id="btnAllerConnexion">Connexion</button>
+            <button id="btnAllerInscription" class="btn-secondaire">Inscription</button>
+        </div>
+    </div>
+
+    <div id="ecranInscription" class="ecran">
+        <h1>Inscription</h1>
+        <div class="form-group">
+            <input type="text" id="monNom" placeholder="Pseudo">
+            <input type="tel" id="monTel" placeholder="Numéro">
+            <input type="password" id="monMdp" placeholder="Code (4 chiffres)" maxlength="4">
+            <button id="btnCreerProfil">Valider</button>
+            <button class="btn-retour btn-secondaire">Retour</button>
+        </div>
+    </div>
+
+    <div id="ecranConnexion" class="ecran">
+        <h1>Connexion</h1>
+        <div class="form-group">
+            <input type="text" id="loginPseudo" placeholder="Pseudo">
+            <input type="password" id="loginMdp" placeholder="Code (4 chiffres)" maxlength="4">
+            <button id="btnSeConnecter">Entrer</button>
+            <button class="btn-retour btn-secondaire">Retour</button>
+        </div>
+    </div>
+
+    <div id="ecranChallengers" class="ecran">
+        <h2 id="titreBonjour" style="margin-top: 20px;">Bonjour !</h2>
+        <p style="font-size:14px; color:#aaa;">Qui vas-tu affronter aujourd'hui ?</p>
+
+        <div class="form-group" style="width:100%; flex-direction:row; gap:5px; margin-top:20px;">
+            <input type="text" id="recherchePseudo" placeholder="Ajouter un pseudo...">
+            <button id="btnAjouterAmi" style="padding:10px 15px;">+</button>
+        </div>
+        
+        <div class="section-titre">Ma Liste</div>
+        <ul id="listePersonnes"></ul>
+        <div id="msgAucunAmi" class="vide-msg" style="display:none;">Aucun challenger ajouté.</div>
+    </div>
+
+    <div id="ecranDefis" class="ecran">
+        <h2 style="margin-top: 10px;">Suivi des Défis</h2>
+        
+        <div class="section-titre" style="color:#ff9800;">Défis Reçus</div>
+        <ul id="listeDefisRecus"></ul>
+        <div id="msgAucunDefiRecu" class="vide-msg">Tu n'as aucun défi à relever.</div>
+
+        <div class="section-titre" style="color:#03a9f4; margin-top:30px;">Défis Envoyés</div>
+        <ul id="listeDefisEnvoyes"></ul>
+        <div id="msgAucunDefiEnvoye" class="vide-msg">Tu n'as encore lancé aucun défi.</div>
+    </div>
+
+    <div id="ecranStatistiques" class="ecran">
+        <h2 style="margin-top: 20px;">Statistiques</h2>
+        
+        <div class="stat-box">
+            <div class="stat-number" id="countDefisLances">0</div>
+            <div class="stat-label">Défis lancés</div>
+        </div>
+
+        <div class="stat-box">
+            <div class="stat-number" id="countDefisReleves" style="color:#28a745;">0</div>
+            <div class="stat-label">Défis accomplis</div>
+        </div>
+
+        <div class="section-titre" style="margin-top:40px;">Mon Compte</div>
+        <div class="form-group" style="width:80%;">
+            <label style="color:#aaa; font-size:12px; margin-bottom:-10px;">Pseudo</label>
+            <input type="text" id="editNom">
+            
+            <label style="color:#aaa; font-size:12px; margin-bottom:-10px; margin-top:5px;">Numéro de téléphone</label>
+            <input type="tel" id="editTel">
+            
+            <label style="color:#aaa; font-size:12px; margin-bottom:-10px; margin-top:5px;">Code secret</label>
+            <input type="password" id="editMdp" maxlength="4">
+            
+            <button id="btnUpdateProfil" class="btn-update">Enregistrer les modifications</button>
+        </div>
+
+        <button id="btnDeconnexion" class="btn-secondaire" style="margin-top: 40px; width: 80%;">Se déconnecter</button>
+    </div>
+
+    <div id="defiModal" class="modal">
+        <div class="modal-content">
+            <span class="btn-fermer-modal" onclick="document.getElementById('defiModal').style.display='none'">&times;</span>
+            <h2 style="color:#ffeb3b; margin-top:10px;">Lancer un défi</h2>
+            <div style="margin-bottom:15px; font-size:14px; color:#aaa;">
+                <input type="checkbox" id="checkSmsEnvoi"> Prévenir par SMS
+            </div>
+            
+            <div class="option-defi" onclick="envoyerDefi('5x Zig Horizontale (5 séries)')">
+                <h4 style="margin:0; color:#ffeb3b;">Zig Horizontale</h4>
+                <p style="font-size: 11px; margin: 5px 0;">5 plaques, 5 séries.</p>
+            </div>
+            
+            <div class="option-defi">
+                <h4 style="margin:0; color:#ffeb3b;">Statique</h4>
+                <div style="font-weight: bold; font-size: 20px; margin: 5px 0;"><span id="valStatique">3</span> MIN</div>
+                <button onclick="ajouterMinute()" style="padding:5px 10px; font-size:12px; background:#444; color:white;">+1 MIN</button>
+                <button onclick="envoyerDefi(document.getElementById('valStatique').innerText + ' min Statique')" style="width:100%; margin-top:10px;">Lancer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="navBar" class="nav-bottom">
+        <button id="tabChallengers" class="actif" onclick="changerOnglet('ecranChallengers')">
+            <span class="nav-icon">👥</span>
+            Challengers
+        </button>
+        <button id="tabDefis" onclick="changerOnglet('ecranDefis')">
+            <span class="nav-icon">⚔️</span>
+            <div>Défis <span id="badgeNavDefis" class="badge" style="display:none;">0</span></div>
+        </button>
+        <button id="tabStatistiques" onclick="changerOnglet('ecranStatistiques')">
+            <span class="nav-icon">📊</span>
+            Stats
+        </button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBqs_2wiRdnVsJ9onJaq7xyqCxM0jjzpW4",
+            authDomain: "doab-challengers.firebaseapp.com",
+            projectId: "doab-challengers",
+            storageBucket: "doab-challengers.firebasestorage.app",
+            messagingSenderId: "570967653349",
+            appId: "1:570967653349:web:81f90431bd823cf0024d0c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const colRef = collection(db, "challengers");
+        const defisRef = collection(db, "defis");
+        
+        let monProfil = JSON.parse(localStorage.getItem('doab_profil'));
+        let mesAmis = JSON.parse(localStorage.getItem('doab_amis')) || [];
+        let cibleActuelle = null;
+        let tempsStatique = 3;
+
+        let defisActiveRecus = [];
+        let defisEnvoyes = []; 
+
+        function changerEcran(id) {
+            document.querySelectorAll('.ecran').forEach(e => e.classList.remove('actif'));
+            document.getElementById(id).classList.add('actif');
+            document.getElementById('navBar').style.display = 'none';
+        }
+
+        window.changerOnglet = (idEcran) => {
+            document.querySelectorAll('.ecran').forEach(e => e.classList.remove('actif'));
+            document.getElementById(idEcran).classList.add('actif');
+            
+            document.getElementById('tabChallengers').classList.remove('actif');
+            document.getElementById('tabDefis').classList.remove('actif');
+            document.getElementById('tabStatistiques').classList.remove('actif');
+            
+            if(idEcran === 'ecranChallengers') document.getElementById('tabChallengers').classList.add('actif');
+            if(idEcran === 'ecranDefis') document.getElementById('tabDefis').classList.add('actif');
+            if(idEcran === 'ecranStatistiques') document.getElementById('tabStatistiques').classList.add('actif');
+        };
+
+        document.getElementById('btnAllerConnexion').onclick = () => changerEcran('ecranConnexion');
+        document.getElementById('btnAllerInscription').onclick = () => changerEcran('ecranInscription');
+        document.querySelectorAll('.btn-retour').forEach(b => b.onclick = () => changerEcran('ecranAccueil'));
+
+        document.getElementById('btnCreerProfil').onclick = async () => {
+            const nom = document.getElementById('monNom').value.trim();
+            const tel = document.getElementById('monTel').value.trim();
+            const mdp = document.getElementById('monMdp').value.trim();
+            if(!nom || !tel || mdp.length < 4) return alert("Champs incomplets");
+            await addDoc(colRef, { nom, nomLower: nom.toLowerCase(), tel, mdp });
+            alert("Compte créé !");
+            changerEcran('ecranConnexion');
+        };
+
+        document.getElementById('btnSeConnecter').onclick = async () => {
+            const pseudo = document.getElementById('loginPseudo').value.trim().toLowerCase();
+            const mdp = document.getElementById('loginMdp').value.trim();
+            const q = query(colRef, where("nomLower", "==", pseudo));
+            const snap = await getDocs(q);
+            if(snap.empty || snap.docs[0].data().mdp !== mdp) return alert("Erreur identifiants");
+            const u = snap.docs[0].data();
+            monProfil = { id: snap.docs[0].id, nom: u.nom, tel: u.tel };
+            localStorage.setItem('doab_profil', JSON.stringify(monProfil));
+            location.reload();
+        };
+
+        document.getElementById('btnAjouterAmi').onclick = async () => {
+            const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
+            const q = query(colRef, where("nomLower", "==", pseudo));
+            const snap = await getDocs(q);
+            if(snap.empty) return alert("Inconnu");
+            const u = snap.docs[0].data();
+            if(!mesAmis.find(a => a.id === snap.docs[0].id) && u.nom.toLowerCase() !== monProfil.nom.toLowerCase()) {
+                mesAmis.push({ id: snap.docs[0].id, nom: u.nom, tel: u.tel });
+                localStorage.setItem('doab_amis', JSON.stringify(mesAmis));
+                renderListeAmi();
+            }
+            document.getElementById('recherchePseudo').value = "";
+        };
+
+        function renderListeAmi() {
+            const list = document.getElementById('listePersonnes');
+            list.innerHTML = "";
+            if(mesAmis.length === 0) {
+                document.getElementById('msgAucunAmi').style.display = 'block';
+            } else {
+                document.getElementById('msgAucunAmi').style.display = 'none';
+                mesAmis.forEach(ami => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span style="font-weight:bold; font-size:18px;">${ami.nom}</span><button onclick="ouvrirDefi('${ami.nom}', '${ami.tel}')">Défier</button>`;
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        window.ouvrirDefi = (nom, tel) => {
+            cibleActuelle = { nom, tel };
+            tempsStatique = 3;
+            document.getElementById('valStatique').innerText = tempsStatique;
+            document.getElementById('defiModal').style.display = "flex";
+        };
+        window.ajouterMinute = () => { tempsStatique++; document.getElementById('valStatique').innerText = tempsStatique; };
+
+        window.envoyerDefi = async (type) => {
+            try {
+                await addDoc(defisRef, { de: monProfil.nom, pour: cibleActuelle.nom, type, statut: "en attente", date: Date.now() });
+                if(document.getElementById('checkSmsEnvoi').checked) {
+                    window.location.href = `sms:${cibleActuelle.tel}?body=${encodeURIComponent("DOAB: Nouveau défi! Objectif: " + type)}`;
+                }
+                document.getElementById('defiModal').style.display = "none";
+                changerOnglet('ecranDefis');
+            } catch(e) { alert("Erreur : " + e.message); }
+        };
+
+        function actualiserInterfaceDefis() {
+            const listRecus = document.getElementById('listeDefisRecus');
+            listRecus.innerHTML = "";
+            document.getElementById('msgAucunDefiRecu').style.display = defisActiveRecus.length === 0 ? 'block' : 'none';
+
+            defisActiveRecus.forEach(d => {
+                const li = document.createElement('li');
+                li.classList.add('defi-item');
+                if (d.statut === "en attente") {
+                    li.classList.add('defi-attente');
+                    li.innerHTML = `<div style="width:100%; margin-bottom:10px; font-size:14px; color:#aaa;">Défi de <b style="color:#fff;">${d.de}</b></div>
+                        <div style="width:100%; margin-bottom:15px; font-size:18px; font-weight:bold; color:#ffeb3b;">${d.type}</div>
+                        <button onclick="changerStatutDefi('${d.id}', 'en cours')" style="width:100%; background:#ffeb3b; color:#000;">ACCEPTER LA MISSION</button>`;
+                } else {
+                    li.classList.add('defi-en-cours');
+                    li.innerHTML = `<div style="width:100%; margin-bottom:5px;"><span style="background:#ff9800; color:#000; padding:2px 5px; border-radius:3px; font-size:11px; font-weight:bold;">EN COURS</span></div>
+                        <div style="width:100%; margin-bottom:15px; font-size:14px; color:#aaa;">Lancé par <b style="color:#fff;">${d.de}</b></div>
+                        <div style="width:100%; margin-bottom:15px; font-size:18px; font-weight:bold; color:#ffeb3b;">${d.type}</div>
+                        <div style="display:flex; gap:5px; width:100%;">
+                            <button onclick="relever('${d.id}', '${d.de}', true)" style="background:#28a745; flex:1; font-size:12px;">✅ VALIDÉ + SMS</button>
+                            <button onclick="relever('${d.id}', '${d.de}', false)" style="background:#444; flex:1; font-size:12px;">✅ DIRECT</button>
+                        </div>`;
+                }
+                listRecus.appendChild(li);
+            });
+
+            const listEnvoyes = document.getElementById('listeDefisEnvoyes');
+            listEnvoyes.innerHTML = "";
+            document.getElementById('msgAucunDefiEnvoye').style.display = defisEnvoyes.length === 0 ? 'block' : 'none';
+
+            defisEnvoyes.forEach(d => {
+                const li = document.createElement('li');
+                li.classList.add('defi-item', 'defi-envoye');
+                let texteStatut = "", couleurTexte = "";
+                if (d.statut === "en attente") { texteStatut = "⏳ En attente de réalisation"; couleurTexte = "#aaa"; }
+                else if (d.statut === "en cours") { texteStatut = "🔥 En cours de réalisation !"; couleurTexte = "#ff9800"; }
+                else if (d.statut === "relevé") { texteStatut = "✅ Défi accompli par l'adversaire"; couleurTexte = "#28a745"; li.classList.add('defi-termine'); }
+                
+                li.innerHTML = `<div style="width:100%;">
+                        <div style="font-size:12px; color:#03a9f4; font-weight:bold; margin-bottom:5px;">POUR : ${d.pour.toUpperCase()}</div>
+                        <div style="color:#fff; font-size:16px; font-weight:bold;">${d.type}</div>
+                        <div style="color:${couleurTexte}; font-size:13px; margin-top:10px; padding-top:10px; border-top:1px solid #333;">${texteStatut}</div>
+                    </div>`;
+                listEnvoyes.appendChild(li);
+            });
+
+            const totalActionRequise = defisActiveRecus.length;
+            const badge = document.getElementById('badgeNavDefis');
+            if(totalActionRequise > 0) { badge.innerText = totalActionRequise; badge.style.display = "inline-block"; }
+            else { badge.style.display = "none"; }
+        }
+
+        if(monProfil && monProfil.nom) {
+            document.getElementById('titreBonjour').innerText = "Salut " + monProfil.nom;
+            changerOnglet('ecranChallengers'); 
+            document.getElementById('navBar').style.display = 'flex'; 
+
+            // SYNCHRONISATION INTELLIGENTE DES AMIS
+            // S'assure que si un ami a changé de pseudo, la liste se met à jour
+            getDocs(colRef).then(snap => {
+                let aChange = false;
+                snap.forEach(doc => {
+                    let ami = mesAmis.find(a => a.id === doc.id);
+                    if(ami && (ami.nom !== doc.data().nom || ami.tel !== doc.data().tel)) {
+                        ami.nom = doc.data().nom;
+                        ami.tel = doc.data().tel;
+                        aChange = true;
+                    }
+                });
+                if(aChange) localStorage.setItem('doab_amis', JSON.stringify(mesAmis));
+                renderListeAmi();
+            });
+
+            // CHARGER LES DONNÉES DU PROFIL DANS L'ONGLET STATS
+            getDocs(query(colRef, where("nomLower", "==", monProfil.nom.toLowerCase()))).then(s => {
+                if(!s.empty) {
+                    const u = s.docs[0].data();
+                    document.getElementById('editNom').value = u.nom;
+                    document.getElementById('editTel').value = u.tel;
+                    document.getElementById('editMdp').value = u.mdp;
+                    monProfil.id = s.docs[0].id; // Sécurité
+                    localStorage.setItem('doab_profil', JSON.stringify(monProfil));
+                }
+            });
+
+            const qDefisRecus = query(defisRef, where("pour", "==", monProfil.nom));
+            onSnapshot(qDefisRecus, (snap) => {
+                defisActiveRecus = [];
+                let defisRelevesTotal = 0;
+                snap.forEach(dDoc => {
+                    const d = dDoc.data();
+                    if (d.statut === "en attente" || d.statut === "en cours") defisActiveRecus.push({ id: dDoc.id, ...d });
+                    else if (d.statut === "relevé") defisRelevesTotal++;
+                });
+                document.getElementById('countDefisReleves').innerText = defisRelevesTotal;
+                actualiserInterfaceDefis();
+            });
+
+            const qDefisLances = query(defisRef, where("de", "==", monProfil.nom));
+            onSnapshot(qDefisLances, (snap) => {
+                defisEnvoyes = [];
+                document.getElementById('countDefisLances').innerText = snap.size; 
+                snap.forEach(dDoc => { defisEnvoyes.push({ id: dDoc.id, ...dDoc.data() }); });
+                defisEnvoyes.sort((a, b) => b.date - a.date);
+                actualiserInterfaceDefis();
+            });
+        }
+
+        // MISE À JOUR DU PROFIL
+        document.getElementById('btnUpdateProfil').onclick = async () => {
+            const newNom = document.getElementById('editNom').value.trim();
+            const newTel = document.getElementById('editTel').value.trim();
+            const newMdp = document.getElementById('editMdp').value.trim();
+            if(!newNom || !newTel || newMdp.length < 4) return alert("Veuillez remplir correctement les champs.");
+
+            try {
+                if(newNom.toLowerCase() !== monProfil.nom.toLowerCase()) {
+                    const qCheck = query(colRef, where("nomLower", "==", newNom.toLowerCase()));
+                    const snapCheck = await getDocs(qCheck);
+                    if(!snapCheck.empty) return alert("Ce pseudo est déjà pris !");
+                }
+
+                // 1. Mise à jour du profil
+                await updateDoc(doc(db, "challengers", monProfil.id), {
+                    nom: newNom,
+                    nomLower: newNom.toLowerCase(),
+                    tel: newTel,
+                    mdp: newMdp
+                });
+
+                // 2. Si le pseudo a changé, on met à jour l'historique de ses défis
+                if(newNom !== monProfil.nom) {
+                    const qDe = query(defisRef, where("de", "==", monProfil.nom));
+                    const snapDe = await getDocs(qDe);
+                    snapDe.forEach(d => updateDoc(doc(db, "defis", d.id), { de: newNom }));
+
+                    const qPour = query(defisRef, where("pour", "==", monProfil.nom));
+                    const snapPour = await getDocs(qPour);
+                    snapPour.forEach(d => updateDoc(doc(db, "defis", d.id), { pour: newNom }));
+                }
+
+                monProfil.nom = newNom;
+                monProfil.tel = newTel;
+                localStorage.setItem('doab_profil', JSON.stringify(monProfil));
+                
+                alert("Profil mis à jour avec succès !");
+                location.reload();
+            } catch(e) { alert("Erreur lors de la mise à jour : " + e.message); }
+        };
+
+        window.changerStatutDefi = async (id, nouveauStatut) => { await updateDoc(doc(db, "defis", id), { statut: nouveauStatut }); };
+
+        window.relever = async (id, deQui, avecSms) => {
+            await updateDoc(doc(db, "defis", id), { statut: "relevé" });
+            if(avecSms) {
+                const q = query(colRef, where("nom", "==", deQui));
+                const snap = await getDocs(q);
+                if(!snap.empty) window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: Je viens de terrasser ton défi ! 💪")}`;
+            }
+        };
+
+        document.getElementById('btnDeconnexion').onclick = () => { localStorage.clear(); location.reload(); };
+    </script>
+</body>
+</html>
