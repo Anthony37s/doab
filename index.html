@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOAB - Arène</title>
-<link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ffeb3b">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; padding-bottom: 80px; background-color: #121212; color: #ffffff; margin: 0; }
         h1, h2 { text-align: center; color: #ffeb3b; margin: 5px 0; }
@@ -99,6 +95,9 @@
             <button id="btnAjouterAmi" style="padding:10px 15px;">+</button>
         </div>
         
+        <div class="section-titre" id="titreDemandes" style="display:none; color:#03a9f4;">Demandes reçues <span id="badgeDemandes" class="badge" style="background:#03a9f4;">0</span></div>
+        <ul id="listeDemandes"></ul>
+
         <div class="section-titre">Ma Liste</div>
         <ul id="listePersonnes"></ul>
         <div id="msgAucunAmi" class="vide-msg" style="display:none;">Aucun challenger ajouté.</div>
@@ -181,7 +180,8 @@
 
     <div id="navBar" class="nav-bottom">
         <button id="tabChallengers" class="actif" onclick="changerOnglet('ecranChallengers')">
-            <span class="nav-icon">👥</span> Challengers
+            <span class="nav-icon">👥</span>
+            <div>Amis <span id="badgeNavAmis" class="badge" style="display:none; background:#03a9f4;">0</span></div>
         </button>
         <button id="tabDefis" onclick="changerOnglet('ecranDefis')">
             <span class="nav-icon">⚔️</span>
@@ -194,7 +194,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // AJOUT DE getDoc et deleteDoc DANS LES IMPORTS
+        import { getFirestore, collection, addDoc, getDocs, getDoc, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqs_2wiRdnVsJ9onJaq7xyqCxM0jjzpW4",
@@ -209,6 +210,7 @@
         const db = getFirestore(app);
         const colRef = collection(db, "challengers");
         const defisRef = collection(db, "defis");
+        const demandesRef = collection(db, "demandes"); // Nouvelle référence
         
         let monProfil = JSON.parse(localStorage.getItem('doab_profil'));
         let mesAmis = [];
@@ -218,7 +220,6 @@
         let defisActiveRecus = [];
         let defisEnvoyes = []; 
 
-        // VARIABLES CHRONOMÈTRE
         let chronoInterval = null;
         let tempsRestantSecondes = 0;
         let chronoEnPause = false;
@@ -270,22 +271,76 @@
             location.reload();
         };
 
+        // ENVOYER UNE DEMANDE D'AMI
         document.getElementById('btnAjouterAmi').onclick = async () => {
             const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
+            if(!pseudo) return;
+            if(pseudo === monProfil.nom.toLowerCase()) return alert("Vous ne pouvez pas vous défier vous-même !");
+            
+            // Vérifier si déjà ami
+            if(mesAmis.find(a => a.nom.toLowerCase() === pseudo)) return alert("Ce challenger est déjà dans votre liste !");
+
             const q = query(colRef, where("nomLower", "==", pseudo));
             const snap = await getDocs(q);
-            if(snap.empty) return alert("Inconnu");
+            if(snap.empty) return alert("Challenger introuvable.");
             
-            const u = snap.docs[0].data();
-            const amiId = snap.docs[0].id;
+            const cible = snap.docs[0];
+            
+            // Vérifier si une demande est déjà en attente
+            const qDemande = query(demandesRef, where("deLower", "==", monProfil.nom.toLowerCase()), where("pourLower", "==", pseudo));
+            const snapDemande = await getDocs(qDemande);
+            if(!snapDemande.empty) return alert("Vous avez déjà envoyé une demande à ce challenger.");
 
-            if(!mesAmis.find(a => a.id === amiId) && u.nom.toLowerCase() !== monProfil.nom.toLowerCase()) {
-                const nouvelAmi = { id: amiId, nom: u.nom, tel: u.tel };
-                mesAmis.push(nouvelAmi);
-                await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
-                renderListeAmi();
-            }
+            // Créer la demande
+            await addDoc(demandesRef, {
+                de: monProfil.nom,
+                deLower: monProfil.nom.toLowerCase(),
+                deId: monProfil.id,
+                deTel: monProfil.tel,
+                pour: cible.data().nom,
+                pourLower: pseudo,
+                pourId: cible.id,
+                pourTel: cible.data().tel,
+                statut: "en attente"
+            });
+            
+            alert("Demande d'ami envoyée à " + cible.data().nom + " !");
             document.getElementById('recherchePseudo').value = "";
+        };
+
+        // ACCEPTER UNE DEMANDE D'AMI
+        window.accepterAmi = async (demandeId, deId, deNom, deTel) => {
+            try {
+                // 1. Supprimer la demande
+                await deleteDoc(doc(db, "demandes", demandeId));
+                
+                // 2. L'ajouter à MA liste
+                if(!mesAmis.find(a => a.id === deId)) {
+                    mesAmis.push({ id: deId, nom: deNom, tel: deTel });
+                    await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
+                }
+                
+                // 3. M'ajouter à SA liste
+                const aDocRef = doc(db, "challengers", deId);
+                const aDocSnap = await getDoc(aDocRef);
+                if(aDocSnap.exists()) {
+                    let sesAmis = aDocSnap.data().amis || [];
+                    if(!sesAmis.find(a => a.id === monProfil.id)) {
+                        sesAmis.push({ id: monProfil.id, nom: monProfil.nom, tel: monProfil.tel });
+                        await updateDoc(aDocRef, { amis: sesAmis });
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Erreur lors de l'acceptation.");
+            }
+        };
+
+        // REFUSER UNE DEMANDE
+        window.refuserAmi = async (demandeId) => {
+            if(confirm("Refuser cette demande ?")) {
+                await deleteDoc(doc(db, "demandes", demandeId));
+            }
         };
 
         function renderListeAmi() {
@@ -326,7 +381,6 @@
             } catch(e) { alert("Erreur : " + e.message); }
         };
 
-        // --- GESTION DU CHRONOMÈTRE ---
         window.lancerChrono = (defiId, deQui, minutesText) => {
             const minutes = parseInt(minutesText);
             defiChronoActuel = defiId;
@@ -350,8 +404,6 @@
             if(tempsRestantSecondes <= 0) {
                 clearInterval(chronoInterval);
                 document.getElementById('chronoModal').style.display = "none";
-                
-                // Fin du temps ! On valide automatiquement
                 if(confirm("⏱️ Temps écoulé ! Défi brillamment réussi ! Voulez-vous envoyer un SMS pour prévenir votre adversaire ?")) {
                     relever(defiChronoActuel, deQuiChronoActuel, true);
                 } else {
@@ -363,8 +415,7 @@
         function mettreAJourTexteChrono() {
             let m = Math.floor(tempsRestantSecondes / 60);
             let s = tempsRestantSecondes % 60;
-            document.getElementById('chronoAffichage').innerText = 
-                (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+            document.getElementById('chronoAffichage').innerText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
         }
 
         document.getElementById('btnChronoPause').onclick = () => {
@@ -397,8 +448,6 @@
                         <button onclick="changerStatutDefi('${d.id}', 'en cours')" style="width:100%; background:#ffeb3b; color:#000;">ACCEPTER LA MISSION</button>`;
                 } else {
                     li.classList.add('defi-en-cours');
-                    
-                    // Vérifier si c'est un défi avec temps pour afficher le chrono
                     let boutonChrono = "";
                     const regexMinutes = d.type.match(/(\d+)\s*min/i);
                     if(regexMinutes) {
@@ -450,6 +499,37 @@
             changerOnglet('ecranChallengers'); 
             document.getElementById('navBar').style.display = 'flex'; 
 
+            // ECOUTER LES DEMANDES D'AMIS EN TEMPS RÉEL
+            const qDemandesRecues = query(demandesRef, where("pourLower", "==", monProfil.nom.toLowerCase()), where("statut", "==", "en attente"));
+            onSnapshot(qDemandesRecues, (snap) => {
+                const listeDemandes = document.getElementById('listeDemandes');
+                listeDemandes.innerHTML = "";
+                
+                if(snap.size > 0) {
+                    document.getElementById('titreDemandes').style.display = "block";
+                    document.getElementById('badgeDemandes').innerText = snap.size;
+                    document.getElementById('badgeNavAmis').style.display = "inline-block";
+                    document.getElementById('badgeNavAmis').innerText = snap.size;
+                } else {
+                    document.getElementById('titreDemandes').style.display = "none";
+                    document.getElementById('badgeNavAmis').style.display = "none";
+                }
+
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    const li = document.createElement('li');
+                    li.style.borderLeftColor = "#03a9f4";
+                    li.innerHTML = `
+                        <div>Demande de <b style="color:#03a9f4;">${d.de}</b></div>
+                        <div style="display:flex; gap:5px;">
+                            <button onclick="accepterAmi('${docSnap.id}', '${d.deId}', '${d.de}', '${d.deTel}')" style="background:#28a745; padding:8px; font-size:12px; color:white;">OUI</button>
+                            <button onclick="refuserAmi('${docSnap.id}')" style="background:#dc3545; padding:8px; font-size:12px; color:white;">NON</button>
+                        </div>
+                    `;
+                    listeDemandes.appendChild(li);
+                });
+            });
+
             const monDocRef = doc(db, "challengers", monProfil.id);
             onSnapshot(monDocRef, (docSnap) => {
                 if(docSnap.exists()) {
@@ -460,19 +540,7 @@
                     document.getElementById('editTel').value = data.tel;
                     document.getElementById('editMdp').value = data.mdp;
                     
-                    getDocs(colRef).then(snapChallengers => {
-                        let aChange = false;
-                        snapChallengers.forEach(docC => {
-                            let ami = mesAmis.find(a => a.id === docC.id);
-                            if(ami && (ami.nom !== docC.data().nom || ami.tel !== docC.data().tel)) {
-                                ami.nom = docC.data().nom;
-                                ami.tel = docC.data().tel;
-                                aChange = true;
-                            }
-                        });
-                        if(aChange) updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
-                        renderListeAmi();
-                    });
+                    renderListeAmi();
                 }
             });
 
@@ -549,5 +617,4 @@
         document.getElementById('btnDeconnexion').onclick = () => { localStorage.clear(); location.reload(); };
     </script>
 </body>
-
 </html>
