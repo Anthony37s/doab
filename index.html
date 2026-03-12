@@ -32,8 +32,9 @@
         .section-titre { width: 100%; color: #ffeb3b; border-bottom: 1px solid #333; margin-top: 20px; padding-bottom: 5px; font-weight: bold; font-size: 18px; }
         .badge { background: #ff3b30; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-left: 5px; }
         
+        /* Modales DOAB Design */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 1000;}
-        .modal-content { position: relative; background: #222; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 350px; border: 2px solid #ffeb3b; }
+        .modal-content { position: relative; background: #222; padding: 25px; border-radius: 15px; text-align: center; width: 90%; max-width: 350px; border: 2px solid #ffeb3b; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); }
         .btn-fermer-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #aaa; cursor: pointer; line-height: 1; }
         
         .nav-bottom { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; border-top: 1px solid #333; z-index: 500; }
@@ -196,7 +197,7 @@
 
             <div style="margin-bottom:20px; font-size:14px; color:#aaa; text-align:left; background:#111; padding:10px; border-radius:5px;">
                 <label><input type="checkbox" id="checkSmsEnvoiPerf"> Prévenir par SMS</label><br>
-                <span style="font-size:11px; color:#666; margin-left:25px;">(Si plusieurs joueurs, génère un SMS groupé)</span>
+                <span style="font-size:11px; color:#666; margin-left:25px;">(Génère un SMS groupé si multi-sélection)</span>
             </div>
 
             <button onclick="envoyerDefiMulti()" style="width:100%;">🔥 Lancer le(s) défi(s) !</button>
@@ -208,6 +209,38 @@
             <h2 id="chronoTitre" style="color:#03a9f4; margin-top:10px;">En plein effort !</h2>
             <div id="chronoAffichage">00:00</div>
             <div id="chronoActions" style="display:flex; gap:10px; margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <div id="customAlertModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content">
+            <span class="btn-fermer-modal" onclick="document.getElementById('customAlertModal').style.display='none'">&times;</span>
+            <h2 id="customAlertTitle" style="color:#ffeb3b; margin-top:10px;">Message</h2>
+            <p id="customAlertText" style="color:#aaa; font-size:16px; margin: 20px 0;"></p>
+            <button onclick="document.getElementById('customAlertModal').style.display='none'" style="width:100%;">OK</button>
+        </div>
+    </div>
+
+    <div id="customConfirmModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content">
+            <h2 id="customConfirmTitle" style="color:#ffeb3b; margin-top:10px;">Confirmation</h2>
+            <p id="customConfirmText" style="color:#aaa; font-size:16px; margin: 20px 0;"></p>
+            <div style="display:flex; gap:10px;">
+                <button id="btnConfirmYes" style="flex:1; background:#28a745; color:#fff;">OUI</button>
+                <button onclick="document.getElementById('customConfirmModal').style.display='none'" style="flex:1; background:#dc3545; color:#fff;">NON</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="customPromptModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content">
+            <h2 id="customPromptTitle" style="color:#ffeb3b; margin-top:10px;">Résultat</h2>
+            <p id="customPromptText" style="color:#aaa; font-size:14px; margin: 10px 0;"></p>
+            <input type="number" id="customPromptInput" style="margin-bottom:20px; text-align:center; font-size:20px; font-weight:bold;">
+            <div style="display:flex; gap:10px;">
+                <button id="btnPromptValider" style="flex:1; background:#28a745; color:#fff;">VALIDER</button>
+                <button onclick="document.getElementById('customPromptModal').style.display='none'" style="flex:1; background:#444; color:#fff;">ANNULER</button>
+            </div>
         </div>
     </div>
 
@@ -266,9 +299,41 @@
         let deQuiChronoActuel = null;
         let coefChronoActuel = 1;
 
-        // CALCUL ET AFFICHAGE DU SCORE DE PUISSANCE ⚡
+        // --- FONCTIONS MODALES DOAB ---
+        window.afficherMessage = (titre, texte) => {
+            document.getElementById('customAlertTitle').innerText = titre;
+            document.getElementById('customAlertText').innerText = texte;
+            document.getElementById('customAlertModal').style.display = "flex";
+        };
+
+        window.afficherConfirm = (titre, texte, actionOui) => {
+            document.getElementById('customConfirmTitle').innerText = titre;
+            document.getElementById('customConfirmText').innerHTML = texte;
+            document.getElementById('btnConfirmYes').onclick = () => {
+                document.getElementById('customConfirmModal').style.display = 'none';
+                actionOui();
+            };
+            document.getElementById('customConfirmModal').style.display = "flex";
+        };
+
+        window.afficherPrompt = (titre, texte, actionValider) => {
+            document.getElementById('customPromptTitle').innerText = titre;
+            document.getElementById('customPromptText').innerText = texte;
+            document.getElementById('customPromptInput').value = "";
+            document.getElementById('btnPromptValider').onclick = () => {
+                const val = document.getElementById('customPromptInput').value;
+                if(val !== null && val.trim() !== "") {
+                    document.getElementById('customPromptModal').style.display = 'none';
+                    actionValider(val);
+                }
+            };
+            document.getElementById('customPromptModal').style.display = "flex";
+        };
+
+
+        // CALCUL ET AFFICHAGE DU SCORE DE PUISSANCE ⚡ (1 Rep = 15s)
         function getPowerScore(maxPlaques, maxStatique) {
-            return (parseInt(maxPlaques) || 0) * 10 + (parseInt(maxStatique) || 0);
+            return (parseInt(maxPlaques) || 0) * 15 + (parseInt(maxStatique) || 0);
         }
 
         function updatePowerScoreUI(plaques, statique) {
@@ -309,9 +374,9 @@
             const nom = document.getElementById('monNom').value.trim();
             const tel = document.getElementById('monTel').value.trim();
             const mdp = document.getElementById('monMdp').value.trim();
-            if(!nom || !tel || mdp.length < 4) return alert("Champs incomplets");
+            if(!nom || !tel || mdp.length < 4) return afficherMessage("Erreur", "Veuillez remplir tous les champs correctement.");
             await addDoc(colRef, { nom, nomLower: nom.toLowerCase(), tel, mdp, amis: [], maxPlaques: 0, maxStatique: 0 });
-            alert("Compte créé !");
+            afficherMessage("Bienvenue", "Compte créé avec succès ! Tu peux te connecter.");
             changerEcran('ecranConnexion');
         };
 
@@ -320,7 +385,7 @@
             const mdp = document.getElementById('loginMdp').value.trim();
             const q = query(colRef, where("nomLower", "==", pseudo));
             const snap = await getDocs(q);
-            if(snap.empty || snap.docs[0].data().mdp !== mdp) return alert("Erreur identifiants");
+            if(snap.empty || snap.docs[0].data().mdp !== mdp) return afficherMessage("Erreur", "Identifiants incorrects.");
             const u = snap.docs[0].data();
             monProfil = { id: snap.docs[0].id, nom: u.nom, tel: u.tel, maxPlaques: u.maxPlaques || 0, maxStatique: u.maxStatique || 0 };
             localStorage.setItem('doab_profil', JSON.stringify(monProfil));
@@ -331,7 +396,7 @@
         window.validerMaPlaque = async () => {
             const typePlaque = document.getElementById('areneSelectPlaque').value;
             const reps = parseInt(document.getElementById('areneInputReps').value);
-            if(!reps || reps <= 0) return alert("Indique un nombre valide de répétitions !");
+            if(!reps || reps <= 0) return afficherMessage("Oups", "Indique un nombre valide de répétitions !");
 
             if(reps > (monProfil.maxPlaques || 0)) {
                 await updateDoc(doc(db, "challengers", monProfil.id), { maxPlaques: reps });
@@ -366,7 +431,7 @@
         window.stopperMonChrono = async () => {
             clearInterval(chronoInterval);
             document.getElementById('chronoModal').style.display = "none";
-            if(tempsSecondesGlobal === 0) return alert("Tu n'as même pas tenu 1 seconde !");
+            if(tempsSecondesGlobal === 0) return afficherMessage("Sérieusement ?", "Tu n'as même pas tenu 1 seconde !");
             
             if(tempsSecondesGlobal > (monProfil.maxStatique || 0)) {
                 await updateDoc(doc(db, "challengers", monProfil.id), { maxStatique: tempsSecondesGlobal });
@@ -378,10 +443,10 @@
             ouvrirModalSelectionMultiAmi();
         };
 
-        // --- PARTIE 2 : MULTI-SÉLECTION ET COEFS SUR MESURE ---
+        // --- PARTIE 2 : MULTI-SÉLECTION ---
         window.ouvrirModalSelectionMultiAmi = (preselectPseudo = null) => {
             if(mesAmis.length === 0) {
-                alert("Tu dois d'abord ajouter des challengers dans l'onglet 'Amis' !");
+                afficherMessage("Attention", "Tu dois d'abord ajouter des challengers dans l'onglet 'Amis' !");
                 changerOnglet('ecranChallengers');
                 return;
             }
@@ -466,7 +531,6 @@
             if(!defiMultiTargets[amiId]) return;
             const coef = parseFloat(coefStr);
             defiMultiTargets[amiId].coef = coef;
-
             document.getElementById(`coef-val-${amiId}`).innerText = "x" + coef.toFixed(1);
 
             let target = Math.round(perfActuelle.scoreBrut * coef);
@@ -482,10 +546,9 @@
             }
         };
 
-        // ENVOI GROUPÉ
         window.envoyerDefiMulti = async () => {
             const selectedIds = Object.keys(defiMultiTargets);
-            if(selectedIds.length === 0) return alert("Sélectionne au moins un adversaire !");
+            if(selectedIds.length === 0) return afficherMessage("Attention", "Sélectionne au moins un adversaire !");
 
             try {
                 let promises = [];
@@ -529,32 +592,32 @@
                 document.getElementById('modalSelectionAmi').style.display = "none";
                 document.getElementById('areneInputReps').value = "";
                 changerOnglet('ecranDefis');
-                alert(`🔥 Défi envoyé à ${selectedIds.length} challenger(s) !`);
+                afficherMessage("Super !", `🔥 Défi envoyé à ${selectedIds.length} challenger(s) !`);
 
-            } catch(e) { alert("Erreur lors de l'envoi : " + e.message); }
+            } catch(e) { afficherMessage("Erreur", "Erreur lors de l'envoi : " + e.message); }
         };
 
         // --- GESTION AMIS CLASSIQUE ---
         document.getElementById('btnAjouterAmi').onclick = async () => {
             const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
             if(!pseudo) return;
-            if(pseudo === monProfil.nom.toLowerCase()) return alert("Impossible de se défier soi-même.");
-            if(mesAmis.find(a => a.nom.toLowerCase() === pseudo)) return alert("Déjà dans votre liste.");
+            if(pseudo === monProfil.nom.toLowerCase()) return afficherMessage("Impossible", "Tu ne peux pas te défier toi-même.");
+            if(mesAmis.find(a => a.nom.toLowerCase() === pseudo)) return afficherMessage("Déjà fait", "Déjà dans ta liste.");
 
             const q = query(colRef, where("nomLower", "==", pseudo));
             const snap = await getDocs(q);
-            if(snap.empty) return alert("Challenger introuvable.");
+            if(snap.empty) return afficherMessage("Introuvable", "Challenger introuvable.");
             
             const cible = snap.docs[0];
             const qDemande = query(demandesRef, where("deLower", "==", monProfil.nom.toLowerCase()), where("pourLower", "==", pseudo));
             const snapDemande = await getDocs(qDemande);
-            if(!snapDemande.empty) return alert("Demande déjà envoyée.");
+            if(!snapDemande.empty) return afficherMessage("Patience", "Demande déjà envoyée.");
 
             await addDoc(demandesRef, {
                 de: monProfil.nom, deLower: monProfil.nom.toLowerCase(), deId: monProfil.id, deTel: monProfil.tel,
                 pour: cible.data().nom, pourLower: pseudo, pourId: cible.id, pourTel: cible.data().tel, statut: "en attente"
             });
-            alert("Demande d'ami envoyée !");
+            afficherMessage("Succès", "Demande d'ami envoyée !");
             document.getElementById('recherchePseudo').value = "";
         };
 
@@ -577,7 +640,11 @@
             } catch(e) { console.error(e); }
         };
 
-        window.refuserAmi = async (demandeId) => { if(confirm("Refuser cette demande ?")) await deleteDoc(doc(db, "demandes", demandeId)); };
+        window.refuserAmi = (demandeId) => { 
+            afficherConfirm("Demande d'ami", "Refuser cette demande ?", async () => {
+                await deleteDoc(doc(db, "demandes", demandeId));
+            });
+        };
 
         window.ouvrirMenuAmi = (id, nom) => {
             amiSelectionneId = id;
@@ -599,13 +666,13 @@
             }
         };
 
-        document.getElementById('btnSupprimerAmi').onclick = async () => {
-            if(confirm("Voulez-vous vraiment retirer ce challenger ?")) {
+        document.getElementById('btnSupprimerAmi').onclick = () => {
+            afficherConfirm("Suppression", "Voulez-vous vraiment retirer ce challenger ?", async () => {
                 mesAmis = mesAmis.filter(a => a.id !== amiSelectionneId);
                 await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
                 document.getElementById('amiModal').style.display = "none";
                 renderListeAmi();
-            }
+            });
         };
 
         function renderListeAmi() {
@@ -692,53 +759,56 @@
             
             await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
             
-            let msgBonus = "";
-            if(coefChronoActuel && coefChronoActuel !== 1) msgBonus = `\n(Rappel : ton adversaire t'avait mis un coef x${coefChronoActuel})`;
+            let msgBonus = (coefChronoActuel && coefChronoActuel !== 1) ? `<br><br>(Rappel : ton adversaire t'avait mis un coef x${coefChronoActuel})` : "";
 
-            if(confirm(`Tu as tenu ${labelFait}.${msgBonus}\n\nVeux-tu relancer la balle à ${deQuiChronoActuel} avec ce score de vengeance ?`)) {
+            afficherConfirm("Échec", `Tu as tenu ${labelFait}.${msgBonus}<br><br>Veux-tu relancer la balle à ${deQuiChronoActuel} avec ce score de vengeance ?`, () => {
                 perfActuelle = { typeExercice: 'Statique', details: '', scoreBrut: tempsFait };
                 ouvrirModalSelectionMultiAmi(deQuiChronoActuel);
-            }
+            });
         };
 
-        window.echouerPlaque = async (defiId, deQui, detailsComplets, coefApplique) => {
-            const reps = prompt("Échec ! Combien de répétitions as-tu réussi au total ?");
-            if(reps !== null && reps.trim() !== "") {
+        window.echouerPlaque = (defiId, deQui, detailsComplets, coefApplique) => {
+            afficherPrompt("Échec", "Combien de répétitions as-tu réussi au total ?", async (reps) => {
                 await updateDoc(doc(db, "defis", defiId), { statut: "échoué", detailsEchec: "A fait " + reps + " reps" });
                 
-                let msgBonus = "";
-                if(coefApplique && coefApplique !== 1) msgBonus = `\n(Rappel : ton adversaire t'avait mis un coef x${coefApplique})`;
+                let msgBonus = (coefApplique && coefApplique !== 1) ? `<br><br>(Rappel : ton adversaire t'avait mis un coef x${coefApplique})` : "";
 
-                if(confirm(`Tu as fait ${reps} reps.${msgBonus}\n\nVeux-tu relancer le défi à ${deQui} avec ce score de vengeance ?`)) {
+                afficherConfirm("Vengeance !", `Tu as fait ${reps} reps.${msgBonus}<br><br>Veux-tu relancer le défi à ${deQui} avec ce score de vengeance ?`, () => {
                     let plaqueType = "Classique";
                     let match = detailsComplets.match(/\(([^)]+)\)/);
                     if(match) plaqueType = match[1];
 
                     perfActuelle = { typeExercice: 'Plaque Marble', details: plaqueType, scoreBrut: parseInt(reps) };
                     ouvrirModalSelectionMultiAmi(deQui);
-                }
-            }
+                });
+            });
         };
 
         window.changerStatutDefi = async (id, nouveauStatut) => { await updateDoc(doc(db, "defis", id), { statut: nouveauStatut }); };
 
+        window.declinerMission = (id) => {
+            afficherConfirm("Décliner", "Es-tu sûr de vouloir refuser cette mission ? Ton adversaire le verra...", async () => {
+                await updateDoc(doc(db, "defis", id), { statut: "décliné" });
+            });
+        };
+
         window.relever = async (id, deQui, avecSms, coefApplique = 1) => {
             await updateDoc(doc(db, "defis", id), { statut: "relevé" });
-            let msgBonus = (coefApplique && coefApplique !== 1) ? `\n\nPour info, on t'avait mis un coefficient de x${coefApplique} !` : "";
+            let msgBonus = (coefApplique && coefApplique !== 1) ? `<br><br>Pour info, on t'avait mis un coefficient de x${coefApplique} !` : "";
 
             const q = query(colRef, where("nom", "==", deQui));
             const snap = await getDocs(q);
             if(!snap.empty) {
                 const lien = "https://anthony37s.github.io/doab/";
-                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nVoulez-vous envoyer un SMS pour le prévenir ?")) {
+                afficherConfirm("Félicitations !", `DÉFI ACCOMPLI !${msgBonus}<br><br>Envoyer un SMS pour le prévenir ?`, () => {
                     window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: J'ai pulvérisé ton défi ! 💪 À ton tour ! " + lien)}`;
-                }
+                });
             } else {
-                alert("DÉFI ACCOMPLI !" + msgBonus);
+                afficherMessage("Félicitations !", `DÉFI ACCOMPLI !${msgBonus}`);
             }
         };
 
-        window.renvoyerDefiScore = async (pourNom, scoreTexte, tempsSecondes, isChrono) => {
+        window.renvoyerDefiScore = (pourNom, scoreTexte, tempsSecondes, isChrono) => {
             let typeExo = isChrono ? "Statique" : "Plaque Marble";
             let repsMatch = scoreTexte.match(/\d+/);
             let repsBrutes = repsMatch ? parseInt(repsMatch[0]) : 0;
@@ -762,7 +832,10 @@
                     li.classList.add('defi-attente');
                     li.innerHTML = `<div style="width:100%; margin-bottom:10px; font-size:14px; color:#aaa;">Défi de <b style="color:#fff;">${d.de}</b></div>
                         <div style="width:100%; margin-bottom:15px; font-size:18px; font-weight:bold; color:#ffeb3b;">${d.type}</div>
-                        <button onclick="changerStatutDefi('${d.id}', 'en cours')" style="width:100%; background:#ffeb3b; color:#000;">ACCEPTER LA MISSION</button>`;
+                        <div style="display:flex; gap:5px; width:100%;">
+                            <button onclick="changerStatutDefi('${d.id}', 'en cours')" style="background:#ffeb3b; color:#000; flex:1; font-size:12px;">ACCEPTER</button>
+                            <button onclick="declinerMission('${d.id}')" style="background:#dc3545; color:#fff; flex:1; font-size:12px;">DÉCLINER</button>
+                        </div>`;
                 } else {
                     li.classList.add('defi-en-cours');
                     let boutonAction = "";
@@ -802,6 +875,7 @@
                 if (d.statut === "en attente") { texteStatut = "⏳ En attente de réalisation"; couleurTexte = "#aaa"; }
                 else if (d.statut === "en cours") { texteStatut = "🔥 Défi en cours !"; couleurTexte = "#ff9800"; }
                 else if (d.statut === "relevé") { texteStatut = "✅ Défi validé par l'adversaire !"; couleurTexte = "#28a745"; li.classList.add('defi-termine'); }
+                else if (d.statut === "décliné") { texteStatut = "🏳️ Défi décliné (Lâche !)"; couleurTexte = "#aaa"; li.classList.add('defi-echoue'); }
                 else if (d.statut === "échoué") { 
                     texteStatut = "❌ Défi échoué. " + (d.detailsEchec ? d.detailsEchec : ""); 
                     couleurTexte = "#dc3545"; 
@@ -828,7 +902,6 @@
             else { badge.style.display = "none"; }
         }
 
-        // --- INIT PRINCIPAL ---
         if(monProfil && monProfil.nom && monProfil.id) {
             document.getElementById('titreBonjour').innerText = "Salut " + monProfil.nom;
             changerOnglet('ecranArene'); 
@@ -919,13 +992,13 @@
             const newNom = document.getElementById('editNom').value.trim();
             const newTel = document.getElementById('editTel').value.trim();
             const newMdp = document.getElementById('editMdp').value.trim();
-            if(!newNom || !newTel || newMdp.length < 4) return alert("Veuillez remplir correctement les champs.");
+            if(!newNom || !newTel || newMdp.length < 4) return afficherMessage("Erreur", "Veuillez remplir correctement les champs.");
 
             try {
                 if(newNom.toLowerCase() !== monProfil.nom.toLowerCase()) {
                     const qCheck = query(colRef, where("nomLower", "==", newNom.toLowerCase()));
                     const snapCheck = await getDocs(qCheck);
-                    if(!snapCheck.empty) return alert("Ce pseudo est déjà pris !");
+                    if(!snapCheck.empty) return afficherMessage("Erreur", "Ce pseudo est déjà pris !");
                 }
 
                 await updateDoc(doc(db, "challengers", monProfil.id), { nom: newNom, nomLower: newNom.toLowerCase(), tel: newTel, mdp: newMdp });
@@ -943,9 +1016,9 @@
                 monProfil.nom = newNom;
                 monProfil.tel = newTel;
                 localStorage.setItem('doab_profil', JSON.stringify(monProfil));
-                alert("Profil mis à jour !");
+                afficherMessage("Succès", "Profil mis à jour !");
                 location.reload();
-            } catch(e) { alert("Erreur : " + e.message); }
+            } catch(e) { afficherMessage("Erreur", e.message); }
         };
 
         document.getElementById('btnDeconnexion').onclick = () => { localStorage.clear(); location.reload(); };
