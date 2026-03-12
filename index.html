@@ -90,6 +90,7 @@
 
     <div id="ecranArene" class="ecran">
         <h2 style="margin-top: 20px;">L'Arène</h2>
+        <p style="font-size:14px; color:#aaa; margin-bottom:5px;">Ton Score de Puissance : <span id="areneScorePuissance" style="color:#ffeb3b; font-weight:bold;">⚡ 0</span></p>
         <p style="font-size:14px; color:#aaa;">Réalise une performance pour défier tes amis !</p>
 
         <div class="stat-box" style="margin-top:10px;">
@@ -140,13 +141,25 @@
 
     <div id="ecranStatistiques" class="ecran">
         <h2 style="margin-top: 20px;">Statistiques</h2>
-        <div class="stat-box">
-            <div class="stat-number" id="countDefisLances">0</div>
-            <div class="stat-label">Défis lancés</div>
+        
+        <div class="stat-box" style="border-color: #ffeb3b;">
+            <div class="stat-number" id="statsScorePuissance">⚡ 0</div>
+            <div class="stat-label" style="color:#ffeb3b;">Score de Puissance</div>
+            <div style="font-size: 13px; color: #aaa; margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; display:flex; justify-content:space-around;">
+                <div>Max Plaques<br><b id="statsMaxPlaques" style="color:#fff; font-size:16px;">0</b> reps</div>
+                <div>Max Statique<br><b id="statsMaxStatique" style="color:#fff; font-size:16px;">0</b> sec</div>
+            </div>
         </div>
-        <div class="stat-box">
-            <div class="stat-number" id="countDefisReleves" style="color:#28a745;">0</div>
-            <div class="stat-label">Défis accomplis</div>
+
+        <div style="display: flex; gap: 10px; width: 80%; justify-content:center;">
+            <div class="stat-box" style="width: 48%; padding: 15px;">
+                <div class="stat-number" id="countDefisLances" style="font-size: 28px;">0</div>
+                <div class="stat-label" style="font-size: 11px;">Défis lancés</div>
+            </div>
+            <div class="stat-box" style="width: 48%; padding: 15px;">
+                <div class="stat-number" id="countDefisReleves" style="color:#28a745; font-size: 28px;">0</div>
+                <div class="stat-label" style="font-size: 11px;">Défis accomplis</div>
+            </div>
         </div>
 
         <div class="section-titre" style="margin-top:40px;">Mon Compte</div>
@@ -177,7 +190,7 @@
             <h2 style="color:#ffeb3b; margin-top:10px;">À qui le tour ?</h2>
             
             <p style="font-size:14px; color:#aaa;">Ta performance : <br><b id="perfScoreDisplay" style="color:#fff; font-size:18px;">...</b></p>
-            <p style="font-size:12px; color:#aaa; margin-bottom:10px;">Coche tes adversaires et ajuste leur coefficient (handicap) !</p>
+            <p style="font-size:12px; color:#aaa; margin-bottom:10px;">Coche tes adversaires et ajuste le coefficient afin de les aider ou de bluffer</p>
             
             <div id="listeAmisMultiSelect" style="text-align:left; margin-bottom:20px; max-height:40vh; overflow-y:auto; padding-right:5px;"></div>
 
@@ -241,12 +254,9 @@
         let defisActiveRecus = [];
         let defisEnvoyes = []; 
 
-        // Gestion de la performance en cours
         let perfActuelle = { typeExercice: '', details: '', scoreBrut: 0 };
-        // Stockage des cibles sélectionnées : { "idAmi": { coef: 1.0, target: 10 } }
         let defiMultiTargets = {}; 
 
-        // Variables Chrono
         let chronoInterval = null;
         let tempsSecondesGlobal = 0; 
         let tempsTotalInitial = 0;
@@ -256,9 +266,18 @@
         let deQuiChronoActuel = null;
         let coefChronoActuel = 1;
 
-        // CALCUL SCORE DE PUISSANCE ⚡
+        // CALCUL ET AFFICHAGE DU SCORE DE PUISSANCE ⚡
         function getPowerScore(maxPlaques, maxStatique) {
             return (parseInt(maxPlaques) || 0) * 10 + (parseInt(maxStatique) || 0);
+        }
+
+        function updatePowerScoreUI(plaques, statique) {
+            const pScore = getPowerScore(plaques, statique);
+            document.getElementById('monScorePuissance').innerText = "⚡ " + pScore;
+            document.getElementById('areneScorePuissance').innerText = "⚡ " + pScore;
+            document.getElementById('statsScorePuissance').innerText = "⚡ " + pScore;
+            document.getElementById('statsMaxPlaques').innerText = plaques || 0;
+            document.getElementById('statsMaxStatique').innerText = statique || 0;
         }
 
         function changerEcran(id) {
@@ -317,6 +336,7 @@
             if(reps > (monProfil.maxPlaques || 0)) {
                 await updateDoc(doc(db, "challengers", monProfil.id), { maxPlaques: reps });
                 monProfil.maxPlaques = reps;
+                updatePowerScoreUI(monProfil.maxPlaques, monProfil.maxStatique);
             }
 
             perfActuelle = { typeExercice: 'Plaque Marble', details: typePlaque, scoreBrut: reps };
@@ -351,6 +371,7 @@
             if(tempsSecondesGlobal > (monProfil.maxStatique || 0)) {
                 await updateDoc(doc(db, "challengers", monProfil.id), { maxStatique: tempsSecondesGlobal });
                 monProfil.maxStatique = tempsSecondesGlobal;
+                updatePowerScoreUI(monProfil.maxPlaques, monProfil.maxStatique);
             }
 
             perfActuelle = { typeExercice: 'Statique', details: '', scoreBrut: tempsSecondesGlobal };
@@ -365,7 +386,7 @@
                 return;
             }
 
-            defiMultiTargets = {}; // Reset de la liste d'envoi
+            defiMultiTargets = {}; 
 
             let textPerf = "";
             if(perfActuelle.typeExercice === 'Statique') {
@@ -385,7 +406,6 @@
             mesAmis.sort((a, b) => (b.favori === true) - (a.favori === true)).forEach(ami => {
                 let amiScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
                 
-                // Calcul auto du coef
                 let autoCoef = 1.0;
                 if(myScore > 0 && amiScore > 0) autoCoef = Math.max(0.5, Math.min(2.0, amiScore / myScore));
                 autoCoef = Math.round(autoCoef * 10) / 10;
@@ -435,7 +455,7 @@
             if(isChecked) {
                 container.style.display = "block";
                 defiMultiTargets[amiId] = { coef: autoCoef, target: 0 };
-                updateAmiCoef(amiId, autoCoef); // Calcule et affiche la cible
+                updateAmiCoef(amiId, autoCoef); 
             } else {
                 container.style.display = "none";
                 delete defiMultiTargets[amiId];
@@ -470,7 +490,6 @@
             try {
                 let promises = [];
                 let phoneNumbers = [];
-                
                 let nomExoSMS = perfActuelle.typeExercice === 'Statique' ? "Statique" : "Plaque Marble";
 
                 for(let amiId of selectedIds) {
@@ -502,7 +521,7 @@
 
                 if(document.getElementById('checkSmsEnvoiPerf').checked) {
                     const lien = "https://anthony37s.github.io/doab/";
-                    const phones = phoneNumbers.join(','); // iOS/Android gèrent la virgule pour les envois groupés
+                    const phones = phoneNumbers.join(','); 
                     let msg = `DOAB: J'ai fait une performance ! Bats mon score sur l'épreuve ${nomExoSMS}. Joue ici : ${lien}`;
                     window.location.href = `sms:${phones}?body=${encodeURIComponent(msg)}`;
                 }
@@ -711,7 +730,7 @@
             const snap = await getDocs(q);
             if(!snap.empty) {
                 const lien = "https://anthony37s.github.io/doab/";
-                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nEnvoyer un SMS pour le prévenir ?")) {
+                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nVoulez-vous envoyer un SMS pour le prévenir ?")) {
                     window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: J'ai pulvérisé ton défi ! 💪 À ton tour ! " + lien)}`;
                 }
             } else {
@@ -812,8 +831,8 @@
         // --- INIT PRINCIPAL ---
         if(monProfil && monProfil.nom && monProfil.id) {
             document.getElementById('titreBonjour').innerText = "Salut " + monProfil.nom;
-            document.getElementById('monScorePuissance').innerText = "⚡ " + getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
-            changerOnglet('ecranArene'); document.getElementById('navBar').style.display = 'flex'; 
+            changerOnglet('ecranArene'); 
+            document.getElementById('navBar').style.display = 'flex'; 
 
             const qDemandesRecues = query(demandesRef, where("pourLower", "==", monProfil.nom.toLowerCase()), where("statut", "==", "en attente"));
             onSnapshot(qDemandesRecues, (snap) => {
@@ -849,7 +868,7 @@
                     monProfil.maxPlaques = data.maxPlaques || 0;
                     monProfil.maxStatique = data.maxStatique || 0;
                     
-                    document.getElementById('monScorePuissance').innerText = "⚡ " + getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
+                    updatePowerScoreUI(monProfil.maxPlaques, monProfil.maxStatique);
                     document.getElementById('editNom').value = data.nom;
                     document.getElementById('editTel').value = data.tel;
                     document.getElementById('editMdp').value = data.mdp;
@@ -933,4 +952,3 @@
     </script>
 </body>
 </html>
-
