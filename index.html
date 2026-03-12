@@ -13,7 +13,7 @@
         .ecran.actif { display: flex; }
         
         .form-group { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 10px; }
-        input { padding: 12px; border: none; border-radius: 5px; background: #333; color: white; font-size: 16px; flex: 1; }
+        input, select { padding: 12px; border: none; border-radius: 5px; background: #333; color: white; font-size: 16px; flex: 1; width: 100%; box-sizing: border-box; }
         button { padding: 12px 20px; background-color: #ffeb3b; color: #121212; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.2s; }
         button:active { transform: scale(0.98); }
         .btn-secondaire { background-color: #333; color: white; margin-top: 10px; }
@@ -22,7 +22,6 @@
         ul { list-style-type: none; padding: 0; width: 100%; }
         li { background: #222; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #ffeb3b; }
         
-        /* Styles des défis */
         .defi-item { border-left-width: 6px; flex-direction: column; align-items: flex-start; }
         .defi-attente { border-left-color: #ffeb3b; }
         .defi-en-cours { border-left-color: #ff9800; background: #2d2315; }
@@ -33,13 +32,11 @@
         .section-titre { width: 100%; color: #ffeb3b; border-bottom: 1px solid #333; margin-top: 20px; padding-bottom: 5px; font-weight: bold; font-size: 18px; }
         .badge { background: #ff3b30; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-left: 5px; }
         
-        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 1000;}
         .modal-content { position: relative; background: #222; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 350px; border: 2px solid #ffeb3b; }
-        .option-defi { background: #333; padding: 15px; margin: 10px 0; border-radius: 10px; cursor: pointer; }
+        .option-defi { background: #333; padding: 15px; margin: 10px 0; border-radius: 10px; cursor: pointer; text-align: left; }
         .btn-fermer-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #aaa; cursor: pointer; line-height: 1; }
         
-        /* Barre de navigation */
         .nav-bottom { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; border-top: 1px solid #333; z-index: 500; }
         .nav-bottom button { flex: 1; background: transparent; color: #aaa; border-radius: 0; padding: 15px 5px; font-size: 14px; border: none; outline: none; display: flex; flex-direction: column; align-items: center; gap: 5px; }
         .nav-bottom button.actif { color: #ffeb3b; }
@@ -50,8 +47,8 @@
         .stat-number { font-size: 36px; font-weight: bold; color: #ffeb3b; margin-bottom: 5px; }
         .stat-label { color: #aaa; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Chronomètre */
         #chronoAffichage { font-size: 65px; font-weight: bold; margin: 20px 0; color: #fff; font-family: monospace; letter-spacing: 2px; }
+        .menu-dots { font-size: 20px; color: #aaa; background: none; border: none; padding: 5px 10px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -105,7 +102,6 @@
 
     <div id="ecranDefis" class="ecran">
         <h2 style="margin-top: 10px;">Suivi des Défis</h2>
-        
         <div class="section-titre" style="color:#ff9800;">Défis Reçus</div>
         <ul id="listeDefisRecus"></ul>
         <div id="msgAucunDefiRecu" class="vide-msg">Tu n'as aucun défi à relever.</div>
@@ -117,12 +113,10 @@
 
     <div id="ecranStatistiques" class="ecran">
         <h2 style="margin-top: 20px;">Statistiques</h2>
-        
         <div class="stat-box">
             <div class="stat-number" id="countDefisLances">0</div>
             <div class="stat-label">Défis lancés</div>
         </div>
-
         <div class="stat-box">
             <div class="stat-number" id="countDefisReleves" style="color:#28a745;">0</div>
             <div class="stat-label">Défis accomplis</div>
@@ -132,37 +126,50 @@
         <div class="form-group" style="width:80%;">
             <label style="color:#aaa; font-size:12px; margin-bottom:-10px;">Pseudo</label>
             <input type="text" id="editNom">
-            
             <label style="color:#aaa; font-size:12px; margin-bottom:-10px; margin-top:5px;">Numéro de téléphone</label>
             <input type="tel" id="editTel">
-            
             <label style="color:#aaa; font-size:12px; margin-bottom:-10px; margin-top:5px;">Code secret</label>
             <input type="password" id="editMdp" maxlength="4">
-            
-            <button id="btnUpdateProfil" class="btn-update">Enregistrer les modifications</button>
+            <button id="btnUpdateProfil" class="btn-update">Enregistrer</button>
         </div>
-
         <button id="btnDeconnexion" class="btn-secondaire" style="margin-top: 40px; width: 80%;">Se déconnecter</button>
     </div>
 
-    <div id="defiModal" class="modal">
+    <div id="amiModal" class="modal">
         <div class="modal-content">
+            <span class="btn-fermer-modal" onclick="document.getElementById('amiModal').style.display='none'">&times;</span>
+            <h2 id="amiModalNom" style="color:#ffeb3b; margin-top:10px;">Ami</h2>
+            <button id="btnFavoriAmi" style="width:100%; margin-bottom:10px; background:#333; color:white;">⭐ Mettre en favori</button>
+            <button id="btnSupprimerAmi" style="width:100%; background:#dc3545; color:white;">🗑️ Supprimer l'ami</button>
+        </div>
+    </div>
+
+    <div id="defiModal" class="modal">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <span class="btn-fermer-modal" onclick="document.getElementById('defiModal').style.display='none'">&times;</span>
             <h2 style="color:#ffeb3b; margin-top:10px;">Lancer un défi</h2>
             <div style="margin-bottom:15px; font-size:14px; color:#aaa;">
                 <input type="checkbox" id="checkSmsEnvoi"> Prévenir par SMS
             </div>
             
-            <div class="option-defi" onclick="envoyerDefi('5x Zig Horizontale (5 séries)')">
-                <h4 style="margin:0; color:#ffeb3b;">Zig Horizontale</h4>
-                <p style="font-size: 11px; margin: 5px 0;">5 plaques, 5 séries.</p>
+            <div class="option-defi">
+                <h4 style="margin:0 0 10px 0; color:#ffeb3b; text-align:center;">Plaque Marble</h4>
+                <label style="font-size:12px; color:#aaa;">Modèle de plaque :</label>
+                <select id="selectPlaque" style="margin-bottom:10px;">
+                    <option value="Zig Horizontale">Zig Horizontale</option>
+                    <option value="Zig Verticale">Zig Verticale</option>
+                    <option value="Spiral">Spiral</option>
+                </select>
+                <label style="font-size:12px; color:#aaa;">Répétitions :</label>
+                <input type="number" id="inputReps" value="5" min="1" style="margin-bottom:15px; text-align:center;">
+                <button onclick="envoyerDefiPlaque()" style="width:100%;">Lancer ce défi</button>
             </div>
             
-            <div class="option-defi">
+            <div class="option-defi" style="text-align:center;">
                 <h4 style="margin:0; color:#ffeb3b;">Statique</h4>
-                <div style="font-weight: bold; font-size: 20px; margin: 5px 0;"><span id="valStatique">3</span> MIN</div>
+                <div style="font-weight: bold; font-size: 20px; margin: 5px 0;"><span id="valStatique">1</span> MIN</div>
                 <button onclick="ajouterMinute()" style="padding:5px 10px; font-size:12px; background:#444; color:white;">+1 MIN</button>
-                <button onclick="envoyerDefi(document.getElementById('valStatique').innerText + ' min Statique')" style="width:100%; margin-top:10px;">Lancer</button>
+                <button onclick="envoyerDefi(document.getElementById('valStatique').innerText + ' min Statique', true)" style="width:100%; margin-top:10px;">Lancer ce défi</button>
             </div>
         </div>
     </div>
@@ -194,7 +201,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        // AJOUT DE getDoc et deleteDoc DANS LES IMPORTS
         import { getFirestore, collection, addDoc, getDocs, getDoc, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -210,18 +216,20 @@
         const db = getFirestore(app);
         const colRef = collection(db, "challengers");
         const defisRef = collection(db, "defis");
-        const demandesRef = collection(db, "demandes"); // Nouvelle référence
+        const demandesRef = collection(db, "demandes");
         
         let monProfil = JSON.parse(localStorage.getItem('doab_profil'));
         let mesAmis = [];
         let cibleActuelle = null;
-        let tempsStatique = 3;
+        let tempsStatique = 1;
+        let amiSelectionneId = null;
 
         let defisActiveRecus = [];
         let defisEnvoyes = []; 
 
         let chronoInterval = null;
         let tempsRestantSecondes = 0;
+        let tempsTotalInitial = 0;
         let chronoEnPause = false;
         let defiChronoActuel = null;
         let deQuiChronoActuel = null;
@@ -271,75 +279,85 @@
             location.reload();
         };
 
-        // ENVOYER UNE DEMANDE D'AMI
         document.getElementById('btnAjouterAmi').onclick = async () => {
             const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
             if(!pseudo) return;
-            if(pseudo === monProfil.nom.toLowerCase()) return alert("Vous ne pouvez pas vous défier vous-même !");
-            
-            // Vérifier si déjà ami
-            if(mesAmis.find(a => a.nom.toLowerCase() === pseudo)) return alert("Ce challenger est déjà dans votre liste !");
+            if(pseudo === monProfil.nom.toLowerCase()) return alert("Impossible de se défier soi-même.");
+            if(mesAmis.find(a => a.nom.toLowerCase() === pseudo)) return alert("Déjà dans votre liste.");
 
             const q = query(colRef, where("nomLower", "==", pseudo));
             const snap = await getDocs(q);
             if(snap.empty) return alert("Challenger introuvable.");
             
             const cible = snap.docs[0];
-            
-            // Vérifier si une demande est déjà en attente
             const qDemande = query(demandesRef, where("deLower", "==", monProfil.nom.toLowerCase()), where("pourLower", "==", pseudo));
             const snapDemande = await getDocs(qDemande);
-            if(!snapDemande.empty) return alert("Vous avez déjà envoyé une demande à ce challenger.");
+            if(!snapDemande.empty) return alert("Demande déjà envoyée.");
 
-            // Créer la demande
             await addDoc(demandesRef, {
-                de: monProfil.nom,
-                deLower: monProfil.nom.toLowerCase(),
-                deId: monProfil.id,
-                deTel: monProfil.tel,
-                pour: cible.data().nom,
-                pourLower: pseudo,
-                pourId: cible.id,
-                pourTel: cible.data().tel,
-                statut: "en attente"
+                de: monProfil.nom, deLower: monProfil.nom.toLowerCase(), deId: monProfil.id, deTel: monProfil.tel,
+                pour: cible.data().nom, pourLower: pseudo, pourId: cible.id, pourTel: cible.data().tel, statut: "en attente"
             });
-            
-            alert("Demande d'ami envoyée à " + cible.data().nom + " !");
+            alert("Demande d'ami envoyée !");
             document.getElementById('recherchePseudo').value = "";
         };
 
-        // ACCEPTER UNE DEMANDE D'AMI
         window.accepterAmi = async (demandeId, deId, deNom, deTel) => {
             try {
-                // 1. Supprimer la demande
                 await deleteDoc(doc(db, "demandes", demandeId));
-                
-                // 2. L'ajouter à MA liste
                 if(!mesAmis.find(a => a.id === deId)) {
-                    mesAmis.push({ id: deId, nom: deNom, tel: deTel });
+                    mesAmis.push({ id: deId, nom: deNom, tel: deTel, favori: false });
                     await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
                 }
-                
-                // 3. M'ajouter à SA liste
                 const aDocRef = doc(db, "challengers", deId);
                 const aDocSnap = await getDoc(aDocRef);
                 if(aDocSnap.exists()) {
                     let sesAmis = aDocSnap.data().amis || [];
                     if(!sesAmis.find(a => a.id === monProfil.id)) {
-                        sesAmis.push({ id: monProfil.id, nom: monProfil.nom, tel: monProfil.tel });
+                        sesAmis.push({ id: monProfil.id, nom: monProfil.nom, tel: monProfil.tel, favori: false });
                         await updateDoc(aDocRef, { amis: sesAmis });
                     }
                 }
-            } catch(e) {
-                console.error(e);
-                alert("Erreur lors de l'acceptation.");
+            } catch(e) { console.error(e); }
+        };
+
+        window.refuserAmi = async (demandeId) => {
+            if(confirm("Refuser cette demande ?")) await deleteDoc(doc(db, "demandes", demandeId));
+        };
+
+        // --- GESTION MENU AMIS (FAVORIS & SUPPRESSION) ---
+        window.ouvrirMenuAmi = (id, nom) => {
+            amiSelectionneId = id;
+            document.getElementById('amiModalNom').innerText = nom;
+            
+            const ami = mesAmis.find(a => a.id === id);
+            const btnFav = document.getElementById('btnFavoriAmi');
+            if(ami && ami.favori) {
+                btnFav.innerText = "Retirer des favoris";
+                btnFav.style.background = "#444";
+            } else {
+                btnFav.innerText = "⭐ Mettre en favori";
+                btnFav.style.background = "#ff9800";
+            }
+            document.getElementById('amiModal').style.display = "flex";
+        };
+
+        document.getElementById('btnFavoriAmi').onclick = async () => {
+            const index = mesAmis.findIndex(a => a.id === amiSelectionneId);
+            if(index !== -1) {
+                mesAmis[index].favori = !mesAmis[index].favori;
+                await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
+                document.getElementById('amiModal').style.display = "none";
+                renderListeAmi();
             }
         };
 
-        // REFUSER UNE DEMANDE
-        window.refuserAmi = async (demandeId) => {
-            if(confirm("Refuser cette demande ?")) {
-                await deleteDoc(doc(db, "demandes", demandeId));
+        document.getElementById('btnSupprimerAmi').onclick = async () => {
+            if(confirm("Voulez-vous vraiment retirer ce challenger de votre liste ?")) {
+                mesAmis = mesAmis.filter(a => a.id !== amiSelectionneId);
+                await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
+                document.getElementById('amiModal').style.display = "none";
+                renderListeAmi();
             }
         };
 
@@ -350,29 +368,48 @@
                 document.getElementById('msgAucunAmi').style.display = 'block';
             } else {
                 document.getElementById('msgAucunAmi').style.display = 'none';
+                
+                // Trier: Favoris en premier
+                mesAmis.sort((a, b) => (b.favori === true) - (a.favori === true));
+
                 mesAmis.forEach(ami => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<span style="font-weight:bold; font-size:18px;">${ami.nom}</span><button onclick="ouvrirDefi('${ami.nom}', '${ami.tel}')">Défier</button>`;
+                    const iconeFav = ami.favori ? "⭐ " : "";
+                    li.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <span style="font-weight:bold; font-size:18px;">${iconeFav}${ami.nom}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <button onclick="ouvrirDefi('${ami.nom}', '${ami.tel}')" style="padding: 8px 15px; font-size:14px;">Défier</button>
+                            <button class="menu-dots" onclick="ouvrirMenuAmi('${ami.id}', '${ami.nom}')">⋮</button>
+                        </div>
+                    `;
                     list.appendChild(li);
                 });
             }
         }
 
+        // --- ENVOI DES DÉFIS ---
         window.ouvrirDefi = (nom, tel) => {
             cibleActuelle = { nom, tel };
-            tempsStatique = 3;
+            tempsStatique = 1; // Base 1 min
             document.getElementById('valStatique').innerText = tempsStatique;
             document.getElementById('defiModal').style.display = "flex";
         };
 
-        window.ajouterMinute = () => {
-            tempsStatique++;
-            document.getElementById('valStatique').innerText = tempsStatique;
+        window.ajouterMinute = () => { tempsStatique++; document.getElementById('valStatique').innerText = tempsStatique; };
+
+        window.envoyerDefiPlaque = () => {
+            const typePlaque = document.getElementById('selectPlaque').value;
+            const reps = document.getElementById('inputReps').value;
+            envoyerDefi(`${reps}x Plaque Marble (${typePlaque})`, false);
         };
 
-        window.envoyerDefi = async (type) => {
+        window.envoyerDefi = async (type, estChrono = false) => {
             try {
-                await addDoc(defisRef, { de: monProfil.nom, pour: cibleActuelle.nom, type, statut: "en attente", date: Date.now() });
+                await addDoc(defisRef, { 
+                    de: monProfil.nom, pour: cibleActuelle.nom, type, statut: "en attente", date: Date.now(), estChrono: estChrono
+                });
                 if(document.getElementById('checkSmsEnvoi').checked) {
                     window.location.href = `sms:${cibleActuelle.tel}?body=${encodeURIComponent("DOAB: Nouveau défi! Objectif: " + type)}`;
                 }
@@ -381,11 +418,13 @@
             } catch(e) { alert("Erreur : " + e.message); }
         };
 
+        // --- CHRONO ET GESTION ÉCHEC ---
         window.lancerChrono = (defiId, deQui, minutesText) => {
             const minutes = parseInt(minutesText);
             defiChronoActuel = defiId;
             deQuiChronoActuel = deQui;
-            tempsRestantSecondes = minutes * 60;
+            tempsTotalInitial = minutes * 60;
+            tempsRestantSecondes = tempsTotalInitial;
             chronoEnPause = false;
             
             document.getElementById('btnChronoPause').innerText = "⏸️ PAUSE";
@@ -404,11 +443,8 @@
             if(tempsRestantSecondes <= 0) {
                 clearInterval(chronoInterval);
                 document.getElementById('chronoModal').style.display = "none";
-                if(confirm("⏱️ Temps écoulé ! Défi brillamment réussi ! Voulez-vous envoyer un SMS pour prévenir votre adversaire ?")) {
-                    relever(defiChronoActuel, deQuiChronoActuel, true);
-                } else {
-                    relever(defiChronoActuel, deQuiChronoActuel, false);
-                }
+                alert("⏱️ Temps écoulé ! Défi brillamment réussi !");
+                relever(defiChronoActuel, deQuiChronoActuel, false);
             }
         }
 
@@ -424,14 +460,35 @@
         };
 
         document.getElementById('btnChronoEchouer').onclick = async () => {
-            if(confirm("Êtes-vous sûr de vouloir abandonner ?")) {
-                clearInterval(chronoInterval);
-                document.getElementById('chronoModal').style.display = "none";
-                await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué" });
-                alert("Défi marqué comme échoué.");
+            clearInterval(chronoInterval);
+            document.getElementById('chronoModal').style.display = "none";
+            const tempsFait = tempsTotalInitial - tempsRestantSecondes;
+            
+            let mFait = Math.floor(tempsFait / 60);
+            let sFait = tempsFait % 60;
+            let labelFait = (mFait > 0 ? mFait + "m " : "") + sFait + "s";
+            
+            await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
+        };
+
+        window.echouerPlaque = async (defiId) => {
+            const reps = prompt("Échec ! Combien de répétitions as-tu réussi au total ?");
+            if(reps !== null && reps.trim() !== "") {
+                await updateDoc(doc(db, "defis", defiId), { statut: "échoué", detailsEchec: "A fait " + reps + " reps" });
             }
         };
 
+        // Renvoyer la balle en cas d'échec
+        window.renvoyerDefiScore = async (pourNom, scoreTexte) => {
+            try {
+                cibleActuelle = mesAmis.find(a => a.nom.toLowerCase() === pourNom.toLowerCase());
+                if(!cibleActuelle) return alert("Ami introuvable pour le retour.");
+                await addDoc(defisRef, { de: monProfil.nom, pour: cibleActuelle.nom, type: `Battre mon score : ${scoreTexte}`, statut: "en attente", date: Date.now() });
+                alert("Défi retour envoyé avec votre score !");
+            } catch (e) { console.error(e); }
+        };
+
+        // --- AFFICHAGE INTERFACE DÉFIS ---
         function actualiserInterfaceDefis() {
             const listRecus = document.getElementById('listeDefisRecus');
             listRecus.innerHTML = "";
@@ -448,20 +505,24 @@
                         <button onclick="changerStatutDefi('${d.id}', 'en cours')" style="width:100%; background:#ffeb3b; color:#000;">ACCEPTER LA MISSION</button>`;
                 } else {
                     li.classList.add('defi-en-cours');
-                    let boutonChrono = "";
-                    const regexMinutes = d.type.match(/(\d+)\s*min/i);
-                    if(regexMinutes) {
-                        boutonChrono = `<button onclick="lancerChrono('${d.id}', '${d.de}', '${regexMinutes[1]}')" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO (${regexMinutes[1]} MIN)</button>`;
+                    let boutonAction = "";
+                    
+                    if(d.estChrono || d.type.toLowerCase().includes("statique")) {
+                        const regexMinutes = d.type.match(/(\d+)\s*min/i);
+                        const min = regexMinutes ? regexMinutes[1] : "1";
+                        boutonAction = `<button onclick="lancerChrono('${d.id}', '${d.de}', '${min}')" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO</button>`;
+                    } else {
+                        boutonAction = `
+                        <div style="display:flex; gap:5px; width:100%;">
+                            <button onclick="relever('${d.id}', '${d.de}', false)" style="background:#28a745; flex:1; font-size:12px;">✅ DÉFI VALIDÉ</button>
+                            <button onclick="echouerPlaque('${d.id}')" style="background:#dc3545; flex:1; font-size:12px;">❌ ÉCHOUER</button>
+                        </div>`;
                     }
 
-                    li.innerHTML = `<div style="width:100%; margin-bottom:5px;"><span style="background:#ff9800; color:#000; padding:2px 5px; border-radius:3px; font-size:11px; font-weight:bold;">EN COURS</span></div>
+                    li.innerHTML = `<div style="width:100%; margin-bottom:5px;"><span style="background:#ff9800; color:#000; padding:2px 5px; border-radius:3px; font-size:11px; font-weight:bold;">DÉFI EN COURS</span></div>
                         <div style="width:100%; margin-bottom:15px; font-size:14px; color:#aaa;">Lancé par <b style="color:#fff;">${d.de}</b></div>
                         <div style="width:100%; margin-bottom:15px; font-size:18px; font-weight:bold; color:#ffeb3b;">${d.type}</div>
-                        ${boutonChrono}
-                        <div style="display:flex; gap:5px; width:100%;">
-                            <button onclick="relever('${d.id}', '${d.de}', true)" style="background:#28a745; flex:1; font-size:12px;">✅ VALIDÉ + SMS</button>
-                            <button onclick="relever('${d.id}', '${d.de}', false)" style="background:#444; flex:1; font-size:12px;">✅ DIRECT</button>
-                        </div>`;
+                        ${boutonAction}`;
                 }
                 listRecus.appendChild(li);
             });
@@ -474,23 +535,32 @@
                 const li = document.createElement('li');
                 li.classList.add('defi-item', 'defi-envoye');
                 let texteStatut = "", couleurTexte = "";
+                let boutonRetour = "";
                 
                 if (d.statut === "en attente") { texteStatut = "⏳ En attente de réalisation"; couleurTexte = "#aaa"; }
-                else if (d.statut === "en cours") { texteStatut = "🔥 En cours de réalisation !"; couleurTexte = "#ff9800"; }
-                else if (d.statut === "relevé") { texteStatut = "✅ Défi accompli par l'adversaire"; couleurTexte = "#28a745"; li.classList.add('defi-termine'); }
-                else if (d.statut === "échoué") { texteStatut = "❌ L'adversaire a échoué (Abandon)"; couleurTexte = "#dc3545"; li.classList.add('defi-echoue'); }
+                else if (d.statut === "en cours") { texteStatut = "🔥 Défi en cours !"; couleurTexte = "#ff9800"; }
+                else if (d.statut === "relevé") { texteStatut = "✅ Défi validé !"; couleurTexte = "#28a745"; li.classList.add('defi-termine'); }
+                else if (d.statut === "échoué") { 
+                    texteStatut = "❌ Défi échoué. " + (d.detailsEchec ? d.detailsEchec : ""); 
+                    couleurTexte = "#dc3545"; 
+                    li.classList.add('defi-echoue');
+                    
+                    if(d.detailsEchec) {
+                        boutonRetour = `<button onclick="renvoyerDefiScore('${d.pour}', '${d.detailsEchec}')" style="margin-top:10px; padding:5px; font-size:12px; background:#fff; color:#121212;">Défier en retour avec ce score</button>`;
+                    }
+                }
                 
                 li.innerHTML = `<div style="width:100%;">
                         <div style="font-size:12px; color:#03a9f4; font-weight:bold; margin-bottom:5px;">POUR : ${d.pour.toUpperCase()}</div>
                         <div style="color:#fff; font-size:16px; font-weight:bold;">${d.type}</div>
                         <div style="color:${couleurTexte}; font-size:13px; margin-top:10px; padding-top:10px; border-top:1px solid #333;">${texteStatut}</div>
+                        ${boutonRetour}
                     </div>`;
                 listEnvoyes.appendChild(li);
             });
 
-            const totalActionRequise = defisActiveRecus.length;
             const badge = document.getElementById('badgeNavDefis');
-            if(totalActionRequise > 0) { badge.innerText = totalActionRequise; badge.style.display = "inline-block"; }
+            if(defisActiveRecus.length > 0) { badge.innerText = defisActiveRecus.length; badge.style.display = "inline-block"; }
             else { badge.style.display = "none"; }
         }
 
@@ -499,7 +569,6 @@
             changerOnglet('ecranChallengers'); 
             document.getElementById('navBar').style.display = 'flex'; 
 
-            // ECOUTER LES DEMANDES D'AMIS EN TEMPS RÉEL
             const qDemandesRecues = query(demandesRef, where("pourLower", "==", monProfil.nom.toLowerCase()), where("statut", "==", "en attente"));
             onSnapshot(qDemandesRecues, (snap) => {
                 const listeDemandes = document.getElementById('listeDemandes');
@@ -519,13 +588,11 @@
                     const d = docSnap.data();
                     const li = document.createElement('li');
                     li.style.borderLeftColor = "#03a9f4";
-                    li.innerHTML = `
-                        <div>Demande de <b style="color:#03a9f4;">${d.de}</b></div>
+                    li.innerHTML = `<div>Demande de <b style="color:#03a9f4;">${d.de}</b></div>
                         <div style="display:flex; gap:5px;">
                             <button onclick="accepterAmi('${docSnap.id}', '${d.deId}', '${d.de}', '${d.deTel}')" style="background:#28a745; padding:8px; font-size:12px; color:white;">OUI</button>
                             <button onclick="refuserAmi('${docSnap.id}')" style="background:#dc3545; padding:8px; font-size:12px; color:white;">NON</button>
-                        </div>
-                    `;
+                        </div>`;
                     listeDemandes.appendChild(li);
                 });
             });
@@ -535,11 +602,9 @@
                 if(docSnap.exists()) {
                     const data = docSnap.data();
                     mesAmis = data.amis || [];
-                    
                     document.getElementById('editNom').value = data.nom;
                     document.getElementById('editTel').value = data.tel;
                     document.getElementById('editMdp').value = data.mdp;
-                    
                     renderListeAmi();
                 }
             });
@@ -580,9 +645,7 @@
                     if(!snapCheck.empty) return alert("Ce pseudo est déjà pris !");
                 }
 
-                await updateDoc(doc(db, "challengers", monProfil.id), {
-                    nom: newNom, nomLower: newNom.toLowerCase(), tel: newTel, mdp: newMdp
-                });
+                await updateDoc(doc(db, "challengers", monProfil.id), { nom: newNom, nomLower: newNom.toLowerCase(), tel: newTel, mdp: newMdp });
 
                 if(newNom !== monProfil.nom) {
                     const qDe = query(defisRef, where("de", "==", monProfil.nom));
@@ -597,14 +660,12 @@
                 monProfil.nom = newNom;
                 monProfil.tel = newTel;
                 localStorage.setItem('doab_profil', JSON.stringify(monProfil));
-                
-                alert("Profil mis à jour avec succès !");
+                alert("Profil mis à jour !");
                 location.reload();
-            } catch(e) { alert("Erreur lors de la mise à jour : " + e.message); }
+            } catch(e) { alert("Erreur : " + e.message); }
         };
 
         window.changerStatutDefi = async (id, nouveauStatut) => { await updateDoc(doc(db, "defis", id), { statut: nouveauStatut }); };
-
         window.relever = async (id, deQui, avecSms) => {
             await updateDoc(doc(db, "defis", id), { statut: "relevé" });
             if(avecSms) {
