@@ -711,7 +711,7 @@
             const snap = await getDocs(q);
             if(!snap.empty) {
                 const lien = "https://anthony37s.github.io/doab/";
-                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nEnvoyer un SMS pour le narguer ?")) {
+                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nEnvoyer un SMS pour le prévenir ?")) {
                     window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: J'ai pulvérisé ton défi ! 💪 À ton tour ! " + lien)}`;
                 }
             } else {
@@ -933,3 +933,4 @@
     </script>
 </body>
 </html>
+
