@@ -147,10 +147,7 @@
     <div id="defiModal" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <span class="btn-fermer-modal" onclick="document.getElementById('defiModal').style.display='none'">&times;</span>
-            <h2 style="color:#ffeb3b; margin-top:10px;">Lancer un défi</h2>
-            <div style="margin-bottom:15px; font-size:14px; color:#aaa;">
-                <input type="checkbox" id="checkSmsEnvoi"> Prévenir par SMS
-            </div>
+            <h2 style="color:#ffeb3b; margin-top:10px;">Préparer le défi</h2>
             
             <div class="option-defi">
                 <h4 style="margin:0 0 10px 0; color:#ffeb3b; text-align:center;">Plaque Marble</h4>
@@ -160,17 +157,32 @@
                     <option value="Zig Verticale">Zig Verticale</option>
                     <option value="Spiral">Spiral</option>
                 </select>
-                <label style="font-size:12px; color:#aaa;">Répétitions :</label>
+                <label style="font-size:12px; color:#aaa;">Répétitions cibles :</label>
                 <input type="number" id="inputReps" value="5" min="1" style="margin-bottom:15px; text-align:center;">
-                <button onclick="envoyerDefiPlaque()" style="width:100%;">Lancer ce défi</button>
+                <button onclick="preparerEnvoiPlaque()" style="width:100%;">Lancer mon effort</button>
             </div>
             
             <div class="option-defi" style="text-align:center;">
                 <h4 style="margin:0; color:#ffeb3b;">Statique</h4>
                 <div style="font-weight: bold; font-size: 20px; margin: 5px 0;"><span id="valStatique">1</span> MIN</div>
                 <button onclick="ajouterMinute()" style="padding:5px 10px; font-size:12px; background:#444; color:white;">+1 MIN</button>
-                <button onclick="envoyerDefi(document.getElementById('valStatique').innerText + ' min Statique', true)" style="width:100%; margin-top:10px;">Lancer ce défi</button>
+                <button onclick="preparerEnvoiStatique()" style="width:100%; margin-top:10px;">Démarrer le chrono</button>
             </div>
+        </div>
+    </div>
+
+    <div id="senderResultModal" class="modal">
+        <div class="modal-content">
+            <span class="btn-fermer-modal" onclick="document.getElementById('senderResultModal').style.display='none'">&times;</span>
+            <h2 style="color:#ffeb3b; margin-top:10px;">Ton résultat</h2>
+            <p style="color:#aaa; font-size:14px;" id="senderResultText"></p>
+
+            <div style="margin: 20px 0; font-size:14px; color:#aaa; text-align:center;">
+                <input type="checkbox" id="checkSmsEnvoi"> 
+                <label for="checkSmsEnvoi">Prévenir l'adversaire par SMS</label>
+            </div>
+
+            <div id="senderResultButtons"></div>
         </div>
     </div>
 
@@ -233,6 +245,7 @@
         let chronoEnPause = false;
         let defiChronoActuel = null;
         let deQuiChronoActuel = null;
+        let contexteChrono = 'reception'; // 'envoi' ou 'reception'
 
         function changerEcran(id) {
             document.querySelectorAll('.ecran').forEach(e => e.classList.remove('actif'));
@@ -325,7 +338,6 @@
             if(confirm("Refuser cette demande ?")) await deleteDoc(doc(db, "demandes", demandeId));
         };
 
-        // --- GESTION MENU AMIS (FAVORIS & SUPPRESSION) ---
         window.ouvrirMenuAmi = (id, nom) => {
             amiSelectionneId = id;
             document.getElementById('amiModalNom').innerText = nom;
@@ -368,8 +380,6 @@
                 document.getElementById('msgAucunAmi').style.display = 'block';
             } else {
                 document.getElementById('msgAucunAmi').style.display = 'none';
-                
-                // Trier: Favoris en premier
                 mesAmis.sort((a, b) => (b.favori === true) - (a.favori === true));
 
                 mesAmis.forEach(ami => {
@@ -389,44 +399,71 @@
             }
         }
 
-        // --- ENVOI DES DÉFIS ---
         window.ouvrirDefi = (nom, tel) => {
             cibleActuelle = { nom, tel };
-            tempsStatique = 1; // Base 1 min
+            tempsStatique = 1;
             document.getElementById('valStatique').innerText = tempsStatique;
+            document.getElementById('checkSmsEnvoi').checked = false; // Décoché par défaut
             document.getElementById('defiModal').style.display = "flex";
         };
 
         window.ajouterMinute = () => { tempsStatique++; document.getElementById('valStatique').innerText = tempsStatique; };
 
-        window.envoyerDefiPlaque = () => {
+        // --- ENVOI PLAQUE (EXPÉDITEUR) ---
+        window.preparerEnvoiPlaque = () => {
             const typePlaque = document.getElementById('selectPlaque').value;
             const reps = document.getElementById('inputReps').value;
-            envoyerDefi(`${reps}x Plaque Marble (${typePlaque})`, false);
+            document.getElementById('defiModal').style.display = "none";
+
+            document.getElementById('senderResultText').innerText = `As-tu réussi tes ${reps} répétitions sur la plaque ${typePlaque} ?`;
+            document.getElementById('senderResultButtons').innerHTML = `
+                <button onclick="finaliserEnvoiPlaque('${typePlaque}', ${reps}, true)" style="width:100%; background:#28a745; color:white; margin-bottom:10px;">✅ Défi réussi</button>
+                <button onclick="finaliserEnvoiPlaque('${typePlaque}', ${reps}, false)" style="width:100%; background:#dc3545; color:white;">❌ Défi échoué</button>
+            `;
+            document.getElementById('senderResultModal').style.display = "flex";
         };
 
-        window.envoyerDefi = async (type, estChrono = false) => {
-            try {
-                await addDoc(defisRef, { 
-                    de: monProfil.nom, pour: cibleActuelle.nom, type, statut: "en attente", date: Date.now(), estChrono: estChrono
-                });
-                if(document.getElementById('checkSmsEnvoi').checked) {
-                    window.location.href = `sms:${cibleActuelle.tel}?body=${encodeURIComponent("DOAB: Nouveau défi! Objectif: " + type)}`;
-                }
-                document.getElementById('defiModal').style.display = "none";
-                changerOnglet('ecranDefis');
-            } catch(e) { alert("Erreur : " + e.message); }
+        window.finaliserEnvoiPlaque = (typePlaque, repsCibles, reussi) => {
+            let repsFaites = repsCibles;
+            if(!reussi) {
+                let input = prompt("Combien de répétitions as-tu réalisées avant d'échouer ?");
+                if(input === null || input.trim() === "") return;
+                repsFaites = parseInt(input);
+            }
+            document.getElementById('senderResultModal').style.display = "none";
+            envoyerDefiFinal(`${repsFaites}x Plaque Marble (${typePlaque})`);
         };
 
-        // --- CHRONO ET GESTION ÉCHEC ---
-        window.lancerChrono = (defiId, deQui, minutesText) => {
+        // --- ENVOI STATIQUE (EXPÉDITEUR) ---
+        window.preparerEnvoiStatique = () => {
+            const min = document.getElementById('valStatique').innerText;
+            document.getElementById('defiModal').style.display = "none";
+            lancerChronoEnvoi(min);
+        };
+
+        window.lancerChronoEnvoi = (minutesText) => {
             const minutes = parseInt(minutesText);
-            defiChronoActuel = defiId;
-            deQuiChronoActuel = deQui;
             tempsTotalInitial = minutes * 60;
             tempsRestantSecondes = tempsTotalInitial;
             chronoEnPause = false;
-            
+            contexteChrono = 'envoi';
+
+            document.getElementById('btnChronoPause').innerText = "⏸️ PAUSE";
+            mettreAJourTexteChrono();
+            document.getElementById('chronoModal').style.display = "flex";
+
+            clearInterval(chronoInterval);
+            chronoInterval = setInterval(tickChrono, 1000);
+        };
+
+        window.lancerChronoReception = (defiId, deQui, tempsSecondes) => {
+            defiChronoActuel = defiId;
+            deQuiChronoActuel = deQui;
+            tempsTotalInitial = parseInt(tempsSecondes);
+            tempsRestantSecondes = tempsTotalInitial;
+            chronoEnPause = false;
+            contexteChrono = 'reception';
+
             document.getElementById('btnChronoPause').innerText = "⏸️ PAUSE";
             mettreAJourTexteChrono();
             document.getElementById('chronoModal').style.display = "flex";
@@ -443,8 +480,13 @@
             if(tempsRestantSecondes <= 0) {
                 clearInterval(chronoInterval);
                 document.getElementById('chronoModal').style.display = "none";
-                alert("⏱️ Temps écoulé ! Défi brillamment réussi !");
-                relever(defiChronoActuel, deQuiChronoActuel, false);
+                
+                if(contexteChrono === 'envoi') {
+                    montrerResultatStatiqueEnvoi(tempsTotalInitial, true);
+                } else {
+                    alert("⏱️ Temps écoulé ! Défi brillamment réussi !");
+                    relever(defiChronoActuel, deQuiChronoActuel, false);
+                }
             }
         }
 
@@ -463,14 +505,54 @@
             clearInterval(chronoInterval);
             document.getElementById('chronoModal').style.display = "none";
             const tempsFait = tempsTotalInitial - tempsRestantSecondes;
-            
-            let mFait = Math.floor(tempsFait / 60);
-            let sFait = tempsFait % 60;
-            let labelFait = (mFait > 0 ? mFait + "m " : "") + sFait + "s";
-            
-            await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
+
+            if(contexteChrono === 'envoi') {
+                montrerResultatStatiqueEnvoi(tempsFait, false);
+            } else {
+                let mFait = Math.floor(tempsFait / 60);
+                let sFait = tempsFait % 60;
+                let labelFait = (mFait > 0 ? mFait + "m " : "") + sFait + "s";
+                await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
+            }
         };
 
+        window.montrerResultatStatiqueEnvoi = (tempsFaitSecondes, reussi) => {
+            let mFait = Math.floor(tempsFaitSecondes / 60);
+            let sFait = tempsFaitSecondes % 60;
+            let labelFait = (mFait > 0 ? mFait + " min " : "") + (sFait > 0 ? sFait + " s" : "");
+            if(tempsFaitSecondes === 0) labelFait = "0 s";
+
+            let text = reussi ? `Félicitations ! Tu as tenu l'objectif.` : `Tu as tenu ${labelFait}. Ce sera le temps à battre pour ton adversaire.`;
+
+            document.getElementById('senderResultText').innerText = text;
+            document.getElementById('senderResultButtons').innerHTML = `
+                <button onclick="finaliserEnvoiStatique('${labelFait}', ${tempsFaitSecondes})" style="width:100%; background:#03a9f4; color:white;">Envoyer le défi (${labelFait})</button>
+            `;
+            document.getElementById('senderResultModal').style.display = "flex";
+        };
+
+        window.finaliserEnvoiStatique = (labelFait, tempsSecondes) => {
+            document.getElementById('senderResultModal').style.display = "none";
+            envoyerDefiFinal(`${labelFait} Statique`, true, tempsSecondes);
+        };
+
+        // --- ENVOI FINAL BDD & SMS ---
+        window.envoyerDefiFinal = async (type, estChrono = false, tempsSecondes = null) => {
+            try {
+                let dataDefi = { de: monProfil.nom, pour: cibleActuelle.nom, type, statut: "en attente", date: Date.now(), estChrono: estChrono };
+                if(estChrono && tempsSecondes !== null) dataDefi.tempsSecondes = tempsSecondes;
+
+                await addDoc(defisRef, dataDefi);
+
+                if(document.getElementById('checkSmsEnvoi').checked) {
+                    const lien = "https://anthony37s.github.io/doab/";
+                    window.location.href = `sms:${cibleActuelle.tel}?body=${encodeURIComponent("DOAB: Nouveau défi ! Objectif : " + type + ". Joue ici : " + lien)}`;
+                }
+                changerOnglet('ecranDefis');
+            } catch(e) { alert("Erreur : " + e.message); }
+        };
+
+        // --- GESTION ÉCHEC RÉCEPTION PLAQUE ---
         window.echouerPlaque = async (defiId) => {
             const reps = prompt("Échec ! Combien de répétitions as-tu réussi au total ?");
             if(reps !== null && reps.trim() !== "") {
@@ -478,17 +560,16 @@
             }
         };
 
-        // Renvoyer la balle en cas d'échec
         window.renvoyerDefiScore = async (pourNom, scoreTexte) => {
             try {
                 cibleActuelle = mesAmis.find(a => a.nom.toLowerCase() === pourNom.toLowerCase());
                 if(!cibleActuelle) return alert("Ami introuvable pour le retour.");
                 await addDoc(defisRef, { de: monProfil.nom, pour: cibleActuelle.nom, type: `Battre mon score : ${scoreTexte}`, statut: "en attente", date: Date.now() });
                 alert("Défi retour envoyé avec votre score !");
+                changerOnglet('ecranDefis');
             } catch (e) { console.error(e); }
         };
 
-        // --- AFFICHAGE INTERFACE DÉFIS ---
         function actualiserInterfaceDefis() {
             const listRecus = document.getElementById('listeDefisRecus');
             listRecus.innerHTML = "";
@@ -507,10 +588,11 @@
                     li.classList.add('defi-en-cours');
                     let boutonAction = "";
                     
-                    if(d.estChrono || d.type.toLowerCase().includes("statique")) {
-                        const regexMinutes = d.type.match(/(\d+)\s*min/i);
-                        const min = regexMinutes ? regexMinutes[1] : "1";
-                        boutonAction = `<button onclick="lancerChrono('${d.id}', '${d.de}', '${min}')" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO</button>`;
+                    if(d.estChrono && d.tempsSecondes !== undefined) {
+                        let min = Math.floor(d.tempsSecondes / 60);
+                        let sec = d.tempsSecondes % 60;
+                        let labelBtn = (min > 0 ? min + "m " : "") + sec + "s";
+                        boutonAction = `<button onclick="lancerChronoReception('${d.id}', '${d.de}', ${d.tempsSecondes})" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO (${labelBtn})</button>`;
                     } else {
                         boutonAction = `
                         <div style="display:flex; gap:5px; width:100%;">
@@ -534,8 +616,7 @@
             defisEnvoyes.forEach(d => {
                 const li = document.createElement('li');
                 li.classList.add('defi-item', 'defi-envoye');
-                let texteStatut = "", couleurTexte = "";
-                let boutonRetour = "";
+                let texteStatut = "", couleurTexte = "", boutonRetour = "";
                 
                 if (d.statut === "en attente") { texteStatut = "⏳ En attente de réalisation"; couleurTexte = "#aaa"; }
                 else if (d.statut === "en cours") { texteStatut = "🔥 Défi en cours !"; couleurTexte = "#ff9800"; }
@@ -544,7 +625,6 @@
                     texteStatut = "❌ Défi échoué. " + (d.detailsEchec ? d.detailsEchec : ""); 
                     couleurTexte = "#dc3545"; 
                     li.classList.add('defi-echoue');
-                    
                     if(d.detailsEchec) {
                         boutonRetour = `<button onclick="renvoyerDefiScore('${d.pour}', '${d.detailsEchec}')" style="margin-top:10px; padding:5px; font-size:12px; background:#fff; color:#121212;">Défier en retour avec ce score</button>`;
                     }
@@ -573,7 +653,6 @@
             onSnapshot(qDemandesRecues, (snap) => {
                 const listeDemandes = document.getElementById('listeDemandes');
                 listeDemandes.innerHTML = "";
-                
                 if(snap.size > 0) {
                     document.getElementById('titreDemandes').style.display = "block";
                     document.getElementById('badgeDemandes').innerText = snap.size;
@@ -583,7 +662,6 @@
                     document.getElementById('titreDemandes').style.display = "none";
                     document.getElementById('badgeNavAmis').style.display = "none";
                 }
-
                 snap.forEach(docSnap => {
                     const d = docSnap.data();
                     const li = document.createElement('li');
@@ -666,12 +744,16 @@
         };
 
         window.changerStatutDefi = async (id, nouveauStatut) => { await updateDoc(doc(db, "defis", id), { statut: nouveauStatut }); };
+
         window.relever = async (id, deQui, avecSms) => {
             await updateDoc(doc(db, "defis", id), { statut: "relevé" });
-            if(avecSms) {
-                const q = query(colRef, where("nom", "==", deQui));
-                const snap = await getDocs(q);
-                if(!snap.empty) window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: Je viens de terrasser ton défi ! 💪")}`;
+            const q = query(colRef, where("nom", "==", deQui));
+            const snap = await getDocs(q);
+            if(!snap.empty) {
+                const lien = "https://anthony37s.github.io/doab/";
+                if(confirm("Défi relevé ! Voulez-vous envoyer un SMS à votre adversaire ?")) {
+                    window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: Je viens de terrasser ton défi ! 💪 Joue ici : " + lien)}`;
+                }
             }
         };
 
