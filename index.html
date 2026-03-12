@@ -13,7 +13,7 @@
         .ecran.actif { display: flex; }
         
         .form-group { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; margin-top: 10px; }
-        input, select { padding: 12px; border: none; border-radius: 5px; background: #333; color: white; font-size: 16px; flex: 1; width: 100%; box-sizing: border-box; }
+        input[type="text"], input[type="tel"], input[type="password"], input[type="number"], select { padding: 12px; border: none; border-radius: 5px; background: #333; color: white; font-size: 16px; flex: 1; width: 100%; box-sizing: border-box; }
         button { padding: 12px 20px; background-color: #ffeb3b; color: #121212; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.2s; }
         button:active { transform: scale(0.98); }
         .btn-secondaire { background-color: #333; color: white; margin-top: 10px; }
@@ -49,10 +49,11 @@
         #chronoAffichage { font-size: 65px; font-weight: bold; margin: 20px 0; color: #fff; font-family: monospace; letter-spacing: 2px; }
         .menu-dots { font-size: 20px; color: #aaa; background: none; border: none; padding: 5px 10px; cursor: pointer; }
         
-        /* Curseur Coef */
+        /* Curseurs & Checkboxes */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 25px; width: 25px; border-radius: 50%; background: #ffeb3b; cursor: pointer; margin-top: -10px; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: #555; border-radius: 5px; }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: #ffeb3b; cursor: pointer; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -89,7 +90,7 @@
 
     <div id="ecranArene" class="ecran">
         <h2 style="margin-top: 20px;">L'Arène</h2>
-        <p style="font-size:14px; color:#aaa;">Réalise une performance pour défier quelqu'un !</p>
+        <p style="font-size:14px; color:#aaa;">Réalise une performance pour défier tes amis !</p>
 
         <div class="stat-box" style="margin-top:10px;">
             <h3 style="color:#ffeb3b; margin-top:0;">Plaque Marble</h3>
@@ -176,22 +177,16 @@
             <h2 style="color:#ffeb3b; margin-top:10px;">À qui le tour ?</h2>
             
             <p style="font-size:14px; color:#aaa;">Ta performance : <br><b id="perfScoreDisplay" style="color:#fff; font-size:18px;">...</b></p>
+            <p style="font-size:12px; color:#aaa; margin-bottom:10px;">Coche tes adversaires et ajuste leur coefficient (handicap) !</p>
             
-            <select id="selectAmiDefi" onchange="updateCoefAuto()" style="margin-top:15px; margin-bottom:20px; text-align:center;"></select>
-            
-            <div style="background:#111; padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid #333;">
-                <label style="font-size:13px; color:#aaa;">Coefficient appliqué : <b id="coefValDisplay" style="color:#ffeb3b;">x1.0</b></label>
-                <input type="range" id="sliderCoef" min="0.5" max="2" step="0.1" value="1" oninput="updateCoefManual()" style="margin-top:10px;">
-                <p style="font-size:11px; color:#666; margin-top:5px;">Ajuste le curseur pour lui donner un handicap (bluff) ou l'aider !</p>
-            </div>
-            
-            <p style="color:#ff9800; font-weight:bold; font-size:15px; margin-bottom:20px;">Objectif final imposé :<br><span id="targetAdversaireDisplay" style="font-size:22px; color:#fff;">...</span></p>
+            <div id="listeAmisMultiSelect" style="text-align:left; margin-bottom:20px; max-height:40vh; overflow-y:auto; padding-right:5px;"></div>
 
-            <div style="margin-bottom:20px; font-size:14px; color:#aaa;">
-                <input type="checkbox" id="checkSmsEnvoiPerf"> Prévenir par SMS
+            <div style="margin-bottom:20px; font-size:14px; color:#aaa; text-align:left; background:#111; padding:10px; border-radius:5px;">
+                <label><input type="checkbox" id="checkSmsEnvoiPerf"> Prévenir par SMS</label><br>
+                <span style="font-size:11px; color:#666; margin-left:25px;">(Si plusieurs joueurs, génère un SMS groupé)</span>
             </div>
 
-            <button onclick="envoyerDefiFinalPostPerf()" style="width:100%;">Lancer le défi !</button>
+            <button onclick="envoyerDefiMulti()" style="width:100%;">🔥 Lancer le(s) défi(s) !</button>
         </div>
     </div>
 
@@ -199,8 +194,7 @@
         <div class="modal-content">
             <h2 id="chronoTitre" style="color:#03a9f4; margin-top:10px;">En plein effort !</h2>
             <div id="chronoAffichage">00:00</div>
-            <div id="chronoActions" style="display:flex; gap:10px; margin-top:20px;">
-                </div>
+            <div id="chronoActions" style="display:flex; gap:10px; margin-top:20px;"></div>
         </div>
     </div>
 
@@ -247,20 +241,26 @@
         let defisActiveRecus = [];
         let defisEnvoyes = []; 
 
-        // Variables pour la performance actuelle
-        let perfActuelle = { typeExercice: '', details: '', scoreBrut: 0, scoreTarget: 0, coefFinal: 1 };
+        // Gestion de la performance en cours
+        let perfActuelle = { typeExercice: '', details: '', scoreBrut: 0 };
+        // Stockage des cibles sélectionnées : { "idAmi": { coef: 1.0, target: 10 } }
+        let defiMultiTargets = {}; 
 
         // Variables Chrono
         let chronoInterval = null;
         let tempsSecondesGlobal = 0; 
         let tempsTotalInitial = 0;
         let chronoEnPause = false;
-        let contexteChrono = 'entrainement'; // 'entrainement' (UP) ou 'reception' (DOWN)
+        let contexteChrono = 'entrainement';
         let defiChronoActuel = null;
         let deQuiChronoActuel = null;
         let coefChronoActuel = 1;
 
-        // NAVIGATION
+        // CALCUL SCORE DE PUISSANCE ⚡
+        function getPowerScore(maxPlaques, maxStatique) {
+            return (parseInt(maxPlaques) || 0) * 10 + (parseInt(maxStatique) || 0);
+        }
+
         function changerEcran(id) {
             document.querySelectorAll('.ecran').forEach(e => e.classList.remove('actif'));
             document.getElementById(id).classList.add('actif');
@@ -286,12 +286,6 @@
         document.getElementById('btnAllerInscription').onclick = () => changerEcran('ecranInscription');
         document.querySelectorAll('.btn-retour').forEach(b => b.onclick = () => changerEcran('ecranAccueil'));
 
-        // CALCUL SCORE DE PUISSANCE ⚡
-        function getPowerScore(maxPlaques, maxStatique) {
-            return (parseInt(maxPlaques) || 0) * 10 + (parseInt(maxStatique) || 0);
-        }
-
-        // AUTHENTIFICATION
         document.getElementById('btnCreerProfil').onclick = async () => {
             const nom = document.getElementById('monNom').value.trim();
             const tel = document.getElementById('monTel').value.trim();
@@ -314,7 +308,7 @@
             location.reload();
         };
 
-        // --- PARTIE 1 : RÉALISER LA PERFORMANCE (ARÈNE) ---
+        // --- PARTIE 1 : L'ARÈNE ---
         window.validerMaPlaque = async () => {
             const typePlaque = document.getElementById('areneSelectPlaque').value;
             const reps = parseInt(document.getElementById('areneInputReps').value);
@@ -326,7 +320,7 @@
             }
 
             perfActuelle = { typeExercice: 'Plaque Marble', details: typePlaque, scoreBrut: reps };
-            ouvrirModalSelectionAmi();
+            ouvrirModalSelectionMultiAmi();
         };
 
         window.demarrerMonChronoStatique = () => {
@@ -352,7 +346,6 @@
         window.stopperMonChrono = async () => {
             clearInterval(chronoInterval);
             document.getElementById('chronoModal').style.display = "none";
-            
             if(tempsSecondesGlobal === 0) return alert("Tu n'as même pas tenu 1 seconde !");
             
             if(tempsSecondesGlobal > (monProfil.maxStatique || 0)) {
@@ -361,20 +354,19 @@
             }
 
             perfActuelle = { typeExercice: 'Statique', details: '', scoreBrut: tempsSecondesGlobal };
-            ouvrirModalSelectionAmi();
+            ouvrirModalSelectionMultiAmi();
         };
 
-        // --- PARTIE 2 : CHOISIR L'AMI ET LE COEF ---
-        window.ouvrirModalSelectionAmi = (preselectPseudo = null) => {
-            const select = document.getElementById('selectAmiDefi');
-            select.innerHTML = "";
+        // --- PARTIE 2 : MULTI-SÉLECTION ET COEFS SUR MESURE ---
+        window.ouvrirModalSelectionMultiAmi = (preselectPseudo = null) => {
             if(mesAmis.length === 0) {
                 alert("Tu dois d'abord ajouter des challengers dans l'onglet 'Amis' !");
                 changerOnglet('ecranChallengers');
                 return;
             }
 
-            // Mettre à jour l'affichage de MA perf
+            defiMultiTargets = {}; // Reset de la liste d'envoi
+
             let textPerf = "";
             if(perfActuelle.typeExercice === 'Statique') {
                 let m = Math.floor(perfActuelle.scoreBrut / 60);
@@ -385,104 +377,145 @@
             }
             document.getElementById('perfScoreDisplay').innerText = textPerf;
 
-            // Remplir la liste déroulante
-            mesAmis.forEach(ami => {
-                const opt = document.createElement('option');
-                opt.value = ami.id;
-                let pScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
-                opt.innerText = `${ami.nom} (⚡${pScore})`;
-                select.appendChild(opt);
+            const container = document.getElementById('listeAmisMultiSelect');
+            container.innerHTML = "";
+
+            let myScore = getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
+
+            mesAmis.sort((a, b) => (b.favori === true) - (a.favori === true)).forEach(ami => {
+                let amiScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
+                
+                // Calcul auto du coef
+                let autoCoef = 1.0;
+                if(myScore > 0 && amiScore > 0) autoCoef = Math.max(0.5, Math.min(2.0, amiScore / myScore));
+                autoCoef = Math.round(autoCoef * 10) / 10;
+
+                const isPreselected = preselectPseudo && ami.nom.toLowerCase() === preselectPseudo.toLowerCase();
+
+                const div = document.createElement('div');
+                div.style.background = "#222";
+                div.style.padding = "15px";
+                div.style.borderRadius = "10px";
+                div.style.marginBottom = "10px";
+                div.style.border = isPreselected ? "1px solid #ffeb3b" : "1px solid #333";
+
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label style="color:#fff; font-weight:bold; font-size:16px; cursor:pointer; flex:1;">
+                            <input type="checkbox" class="ami-checkbox" value="${ami.id}" onchange="toggleAmiMulti('${ami.id}', ${autoCoef})">
+                            ${ami.nom} <span style="font-size:12px; color:#aaa; font-weight:normal;">(⚡${amiScore})</span>
+                        </label>
+                    </div>
+                    <div id="coef-container-${ami.id}" style="display:none; margin-top:10px; border-top:1px solid #333; padding-top:10px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px; color:#aaa;">
+                            <span>Coef: <b id="coef-val-${ami.id}" style="color:#ffeb3b;">x${autoCoef.toFixed(1)}</b></span>
+                            <span>Cible: <b id="target-val-${ami.id}" style="color:#ff9800; font-size:14px;">...</b></span>
+                        </div>
+                        <input type="range" min="0.5" max="2" step="0.1" value="${autoCoef}" oninput="updateAmiCoef('${ami.id}', this.value)" style="margin-top:10px;">
+                    </div>
+                `;
+                container.appendChild(div);
+
+                if(isPreselected) {
+                    const checkbox = div.querySelector('.ami-checkbox');
+                    checkbox.checked = true;
+                    toggleAmiMulti(ami.id, autoCoef, true);
+                }
             });
 
-            if(preselectPseudo) {
-                const targetAmi = mesAmis.find(a => a.nom.toLowerCase() === preselectPseudo.toLowerCase());
-                if(targetAmi) select.value = targetAmi.id;
-            }
-
             document.getElementById('checkSmsEnvoiPerf').checked = false;
-            updateCoefAuto();
             document.getElementById('modalSelectionAmi').style.display = "flex";
         };
 
-        window.updateCoefAuto = () => {
-            const amiId = document.getElementById('selectAmiDefi').value;
-            const ami = mesAmis.find(a => a.id === amiId);
-            
-            let myScore = getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
-            let amiScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
-            
-            let coef = 1.0;
-            if(myScore > 0 && amiScore > 0) { coef = amiScore / myScore; }
-            
-            coef = Math.max(0.5, Math.min(2.0, coef));
-            coef = Math.round(coef * 10) / 10;
-            
-            document.getElementById('sliderCoef').value = coef;
-            updateCoefManual();
+        window.toggleAmiMulti = (amiId, autoCoef, forceChecked = false) => {
+            const checkbox = document.querySelector(`.ami-checkbox[value="${amiId}"]`);
+            const isChecked = forceChecked ? true : checkbox.checked;
+            const container = document.getElementById(`coef-container-${amiId}`);
+
+            if(isChecked) {
+                container.style.display = "block";
+                defiMultiTargets[amiId] = { coef: autoCoef, target: 0 };
+                updateAmiCoef(amiId, autoCoef); // Calcule et affiche la cible
+            } else {
+                container.style.display = "none";
+                delete defiMultiTargets[amiId];
+            }
         };
 
-        window.updateCoefManual = () => {
-            const coef = parseFloat(document.getElementById('sliderCoef').value);
-            document.getElementById('coefValDisplay').innerText = "x" + coef.toFixed(1);
-            
+        window.updateAmiCoef = (amiId, coefStr) => {
+            if(!defiMultiTargets[amiId]) return;
+            const coef = parseFloat(coefStr);
+            defiMultiTargets[amiId].coef = coef;
+
+            document.getElementById(`coef-val-${amiId}`).innerText = "x" + coef.toFixed(1);
+
             let target = Math.round(perfActuelle.scoreBrut * coef);
             if(target < 1) target = 1;
-            perfActuelle.scoreTarget = target;
-            perfActuelle.coefFinal = coef;
+            defiMultiTargets[amiId].target = target;
 
             if(perfActuelle.typeExercice === 'Statique') {
                 let m = Math.floor(target / 60);
                 let s = target % 60;
-                let timeStr = (m > 0 ? m + "m " : "") + s + "s";
-                document.getElementById('targetAdversaireDisplay').innerText = timeStr + " (Statique)";
+                document.getElementById(`target-val-${amiId}`).innerText = (m > 0 ? m + "m " : "") + s + "s";
             } else {
-                document.getElementById('targetAdversaireDisplay').innerText = target + " reps (" + perfActuelle.details + ")";
+                document.getElementById(`target-val-${amiId}`).innerText = target + " reps";
             }
         };
 
-        window.envoyerDefiFinalPostPerf = async () => {
-            const amiId = document.getElementById('selectAmiDefi').value;
-            const ami = mesAmis.find(a => a.id === amiId);
-            if(!ami) return;
-
-            let typeStr = "";
-            let isChrono = false;
-            let tempsSec = null;
-
-            if(perfActuelle.typeExercice === 'Statique') {
-                typeStr = perfActuelle.scoreTarget + "s Statique"; 
-                isChrono = true;
-                tempsSec = perfActuelle.scoreTarget;
-            } else {
-                typeStr = perfActuelle.scoreTarget + "x Plaque Marble (" + perfActuelle.details + ")";
-            }
+        // ENVOI GROUPÉ
+        window.envoyerDefiMulti = async () => {
+            const selectedIds = Object.keys(defiMultiTargets);
+            if(selectedIds.length === 0) return alert("Sélectionne au moins un adversaire !");
 
             try {
-                await addDoc(defisRef, { 
-                    de: monProfil.nom, 
-                    pour: ami.nom, 
-                    type: typeStr, 
-                    statut: "en attente", 
-                    date: Date.now(), 
-                    estChrono: isChrono,
-                    tempsSecondes: tempsSec,
-                    coefApplique: perfActuelle.coefFinal,
-                    scoreBrutExpediteur: perfActuelle.scoreBrut 
-                });
+                let promises = [];
+                let phoneNumbers = [];
+                
+                let nomExoSMS = perfActuelle.typeExercice === 'Statique' ? "Statique" : "Plaque Marble";
+
+                for(let amiId of selectedIds) {
+                    const ami = mesAmis.find(a => a.id === amiId);
+                    const config = defiMultiTargets[amiId];
+
+                    let typeStr = "";
+                    let isChrono = false;
+                    let tempsSec = null;
+
+                    if(perfActuelle.typeExercice === 'Statique') {
+                        typeStr = config.target + "s Statique";
+                        isChrono = true;
+                        tempsSec = config.target;
+                    } else {
+                        typeStr = config.target + "x Plaque Marble (" + perfActuelle.details + ")";
+                    }
+
+                    let p = addDoc(defisRef, {
+                        de: monProfil.nom, pour: ami.nom, type: typeStr, statut: "en attente", 
+                        date: Date.now(), estChrono: isChrono, tempsSecondes: tempsSec,
+                        coefApplique: config.coef, scoreBrutExpediteur: perfActuelle.scoreBrut
+                    });
+                    promises.push(p);
+                    phoneNumbers.push(ami.tel);
+                }
+
+                await Promise.all(promises);
 
                 if(document.getElementById('checkSmsEnvoiPerf').checked) {
                     const lien = "https://anthony37s.github.io/doab/";
-                    window.location.href = `sms:${ami.tel}?body=${encodeURIComponent("DOAB: J'ai fait une performance ! Ton objectif : " + typeStr + ". Joue ici : " + lien)}`;
+                    const phones = phoneNumbers.join(','); // iOS/Android gèrent la virgule pour les envois groupés
+                    let msg = `DOAB: J'ai fait une performance ! Bats mon score sur l'épreuve ${nomExoSMS}. Joue ici : ${lien}`;
+                    window.location.href = `sms:${phones}?body=${encodeURIComponent(msg)}`;
                 }
-                
+
                 document.getElementById('modalSelectionAmi').style.display = "none";
-                document.getElementById('areneInputReps').value = ""; 
+                document.getElementById('areneInputReps').value = "";
                 changerOnglet('ecranDefis');
-                alert("Le défi a été envoyé avec succès !");
-            } catch(e) { alert("Erreur : " + e.message); }
+                alert(`🔥 Défi envoyé à ${selectedIds.length} challenger(s) !`);
+
+            } catch(e) { alert("Erreur lors de l'envoi : " + e.message); }
         };
 
-        // --- GESTION DES AMIS ET DEMANDES ---
+        // --- GESTION AMIS CLASSIQUE ---
         document.getElementById('btnAjouterAmi').onclick = async () => {
             const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
             if(!pseudo) return;
@@ -518,7 +551,7 @@
                 if(aDocSnap.exists()) {
                     let sesAmis = aDocSnap.data().amis || [];
                     if(!sesAmis.find(a => a.id === monProfil.id)) {
-                        sesAmis.push({ id: monProfil.id, nom: monProfil.nom, tel: monProfil.tel, favori: false });
+                        sesAmis.push({ id: monProfil.id, nom: monProfil.nom, tel: monProfil.tel, favori: false, maxPlaques: monProfil.maxPlaques, maxStatique: monProfil.maxStatique });
                         await updateDoc(aDocRef, { amis: sesAmis });
                     }
                 }
@@ -532,11 +565,8 @@
             document.getElementById('amiModalNom').innerText = nom;
             const ami = mesAmis.find(a => a.id === id);
             const btnFav = document.getElementById('btnFavoriAmi');
-            if(ami && ami.favori) {
-                btnFav.innerText = "Retirer des favoris"; btnFav.style.background = "#444";
-            } else {
-                btnFav.innerText = "⭐ Mettre en favori"; btnFav.style.background = "#ff9800";
-            }
+            if(ami && ami.favori) { btnFav.innerText = "Retirer des favoris"; btnFav.style.background = "#444"; } 
+            else { btnFav.innerText = "⭐ Mettre en favori"; btnFav.style.background = "#ff9800"; }
             document.getElementById('amiModal').style.display = "flex";
         };
 
@@ -551,7 +581,7 @@
         };
 
         document.getElementById('btnSupprimerAmi').onclick = async () => {
-            if(confirm("Voulez-vous vraiment retirer ce challenger de votre liste ?")) {
+            if(confirm("Voulez-vous vraiment retirer ce challenger ?")) {
                 mesAmis = mesAmis.filter(a => a.id !== amiSelectionneId);
                 await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
                 document.getElementById('amiModal').style.display = "none";
@@ -588,7 +618,7 @@
             }
         }
 
-        // --- GESTION RÉCEPTION ET VALIDATION ---
+        // --- GESTION RÉCEPTION ---
         window.lancerChronoReception = (defiId, deQui, tempsSecondes, coefApplique) => {
             defiChronoActuel = defiId;
             deQuiChronoActuel = deQui;
@@ -643,24 +673,30 @@
             
             await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
             
-            if(confirm(`Tu as tenu ${labelFait}. Veux-tu relancer la balle à ${deQuiChronoActuel} avec ce score de vengeance ?`)) {
+            let msgBonus = "";
+            if(coefChronoActuel && coefChronoActuel !== 1) msgBonus = `\n(Rappel : ton adversaire t'avait mis un coef x${coefChronoActuel})`;
+
+            if(confirm(`Tu as tenu ${labelFait}.${msgBonus}\n\nVeux-tu relancer la balle à ${deQuiChronoActuel} avec ce score de vengeance ?`)) {
                 perfActuelle = { typeExercice: 'Statique', details: '', scoreBrut: tempsFait };
-                ouvrirModalSelectionAmi(deQuiChronoActuel);
+                ouvrirModalSelectionMultiAmi(deQuiChronoActuel);
             }
         };
 
-        window.echouerPlaque = async (defiId, deQui, detailsComplets) => {
+        window.echouerPlaque = async (defiId, deQui, detailsComplets, coefApplique) => {
             const reps = prompt("Échec ! Combien de répétitions as-tu réussi au total ?");
             if(reps !== null && reps.trim() !== "") {
                 await updateDoc(doc(db, "defis", defiId), { statut: "échoué", detailsEchec: "A fait " + reps + " reps" });
                 
-                if(confirm(`Tu as fait ${reps} reps. Veux-tu relancer le défi à ${deQui} avec ce score de vengeance ?`)) {
+                let msgBonus = "";
+                if(coefApplique && coefApplique !== 1) msgBonus = `\n(Rappel : ton adversaire t'avait mis un coef x${coefApplique})`;
+
+                if(confirm(`Tu as fait ${reps} reps.${msgBonus}\n\nVeux-tu relancer le défi à ${deQui} avec ce score de vengeance ?`)) {
                     let plaqueType = "Classique";
                     let match = detailsComplets.match(/\(([^)]+)\)/);
                     if(match) plaqueType = match[1];
 
                     perfActuelle = { typeExercice: 'Plaque Marble', details: plaqueType, scoreBrut: parseInt(reps) };
-                    ouvrirModalSelectionAmi(deQui);
+                    ouvrirModalSelectionMultiAmi(deQui);
                 }
             }
         };
@@ -669,17 +705,13 @@
 
         window.relever = async (id, deQui, avecSms, coefApplique = 1) => {
             await updateDoc(doc(db, "defis", id), { statut: "relevé" });
-            
-            let msgBonus = "";
-            if(coefApplique && coefApplique !== 1) {
-                msgBonus = `\n\nPour info, ton adversaire t'avait mis un coefficient de x${coefApplique} pour te tester !`;
-            }
+            let msgBonus = (coefApplique && coefApplique !== 1) ? `\n\nPour info, on t'avait mis un coefficient de x${coefApplique} !` : "";
 
             const q = query(colRef, where("nom", "==", deQui));
             const snap = await getDocs(q);
             if(!snap.empty) {
                 const lien = "https://anthony37s.github.io/doab/";
-                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nVoulez-vous envoyer un SMS pour le narguer ?")) {
+                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nEnvoyer un SMS pour le narguer ?")) {
                     window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: J'ai pulvérisé ton défi ! 💪 À ton tour ! " + lien)}`;
                 }
             } else {
@@ -688,16 +720,14 @@
         };
 
         window.renvoyerDefiScore = async (pourNom, scoreTexte, tempsSecondes, isChrono) => {
-            // Action depuis l'historique "Défis envoyés" pour relancer suite à l'échec d'un adversaire
             let typeExo = isChrono ? "Statique" : "Plaque Marble";
-            let repsBrutes = parseInt(scoreTexte.match(/\d+/)[0]);
+            let repsMatch = scoreTexte.match(/\d+/);
+            let repsBrutes = repsMatch ? parseInt(repsMatch[0]) : 0;
             
-            if(isChrono) {
-                perfActuelle = { typeExercice: typeExo, details: '', scoreBrut: tempsSecondes };
-            } else {
-                perfActuelle = { typeExercice: typeExo, details: 'Classique', scoreBrut: repsBrutes };
-            }
-            ouvrirModalSelectionAmi(pourNom);
+            if(isChrono) { perfActuelle = { typeExercice: typeExo, details: '', scoreBrut: tempsSecondes }; } 
+            else { perfActuelle = { typeExercice: typeExo, details: 'Classique', scoreBrut: repsBrutes }; }
+            
+            ouvrirModalSelectionMultiAmi(pourNom);
         };
 
         function actualiserInterfaceDefis() {
@@ -725,12 +755,11 @@
                         let labelBtn = (min > 0 ? min + "m " : "") + sec + "s";
                         boutonAction = `<button onclick="lancerChronoReception('${d.id}', '${d.de}', ${d.tempsSecondes}, ${leCoef})" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO (${labelBtn})</button>`;
                     } else {
-                        // Échapper les guillemets pour l'appel fonction
                         let detailsStr = d.type.replace(/'/g, "\\'");
                         boutonAction = `
                         <div style="display:flex; gap:5px; width:100%;">
                             <button onclick="relever('${d.id}', '${d.de}', false, ${leCoef})" style="background:#28a745; flex:1; font-size:12px;">✅ DÉFI VALIDÉ</button>
-                            <button onclick="echouerPlaque('${d.id}', '${d.de}', '${detailsStr}')" style="background:#dc3545; flex:1; font-size:12px;">❌ ÉCHOUER</button>
+                            <button onclick="echouerPlaque('${d.id}', '${d.de}', '${detailsStr}', ${leCoef})" style="background:#dc3545; flex:1; font-size:12px;">❌ ÉCHOUER</button>
                         </div>`;
                     }
 
@@ -759,7 +788,6 @@
                     couleurTexte = "#dc3545"; 
                     li.classList.add('defi-echoue');
                     if(d.detailsEchec) {
-                        // Permettre de relancer le joueur sur son échec (optionnel)
                         let leTps = d.scoreEchecChrono || 0;
                         let chronoBool = d.estChrono ? 'true' : 'false';
                         let detailEchecTxt = d.detailsEchec.replace(/'/g, "\\'");
@@ -785,9 +813,7 @@
         if(monProfil && monProfil.nom && monProfil.id) {
             document.getElementById('titreBonjour').innerText = "Salut " + monProfil.nom;
             document.getElementById('monScorePuissance').innerText = "⚡ " + getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
-            
-            changerOnglet('ecranArene'); 
-            document.getElementById('navBar').style.display = 'flex'; 
+            changerOnglet('ecranArene'); document.getElementById('navBar').style.display = 'flex'; 
 
             const qDemandesRecues = query(demandesRef, where("pourLower", "==", monProfil.nom.toLowerCase()), where("statut", "==", "en attente"));
             onSnapshot(qDemandesRecues, (snap) => {
@@ -835,10 +861,8 @@
                             if(ami) {
                                 let dC = docC.data();
                                 if(ami.nom !== dC.nom || ami.tel !== dC.tel || ami.maxPlaques !== dC.maxPlaques || ami.maxStatique !== dC.maxStatique) {
-                                    ami.nom = dC.nom;
-                                    ami.tel = dC.tel;
-                                    ami.maxPlaques = dC.maxPlaques || 0;
-                                    ami.maxStatique = dC.maxStatique || 0;
+                                    ami.nom = dC.nom; ami.tel = dC.tel;
+                                    ami.maxPlaques = dC.maxPlaques || 0; ami.maxStatique = dC.maxStatique || 0;
                                     aChange = true;
                                 }
                             }
