@@ -6,7 +6,7 @@
     <title>DOAB - Arène</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; padding-bottom: 80px; background-color: #121212; color: #ffffff; margin: 0; }
-        h1, h2 { text-align: center; color: #ffeb3b; margin: 5px 0; }
+        h1, h2, h3 { text-align: center; color: #ffeb3b; margin: 5px 0; }
         p { text-align: center; color: #aaa; margin-bottom: 20px; }
         
         .ecran { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 500px; margin: 0 auto; }
@@ -34,7 +34,6 @@
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 1000;}
         .modal-content { position: relative; background: #222; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 350px; border: 2px solid #ffeb3b; }
-        .option-defi { background: #333; padding: 15px; margin: 10px 0; border-radius: 10px; cursor: pointer; text-align: left; }
         .btn-fermer-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #aaa; cursor: pointer; line-height: 1; }
         
         .nav-bottom { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; border-top: 1px solid #333; z-index: 500; }
@@ -49,6 +48,11 @@
 
         #chronoAffichage { font-size: 65px; font-weight: bold; margin: 20px 0; color: #fff; font-family: monospace; letter-spacing: 2px; }
         .menu-dots { font-size: 20px; color: #aaa; background: none; border: none; padding: 5px 10px; cursor: pointer; }
+        
+        /* Curseur Coef */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 25px; width: 25px; border-radius: 50%; background: #ffeb3b; cursor: pointer; margin-top: -10px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: #555; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -83,9 +87,31 @@
         </div>
     </div>
 
+    <div id="ecranArene" class="ecran">
+        <h2 style="margin-top: 20px;">L'Arène</h2>
+        <p style="font-size:14px; color:#aaa;">Réalise une performance pour défier quelqu'un !</p>
+
+        <div class="stat-box" style="margin-top:10px;">
+            <h3 style="color:#ffeb3b; margin-top:0;">Plaque Marble</h3>
+            <select id="areneSelectPlaque" style="margin-bottom:15px; text-align:center;">
+                <option value="Zig Horizontale">Zig Horizontale</option>
+                <option value="Zig Verticale">Zig Verticale</option>
+                <option value="Spiral">Spiral</option>
+            </select>
+            <input type="number" id="areneInputReps" placeholder="Répétitions réussies" style="margin-bottom:15px; text-align:center;">
+            <button onclick="validerMaPlaque()" style="width:100%; background:#ffeb3b; color:#000;">Enregistrer & Défier</button>
+        </div>
+
+        <div class="stat-box">
+            <h3 style="color:#ffeb3b; margin-top:0;">Statique (Planche)</h3>
+            <p style="font-size:12px; color:#aaa;">Tiens le plus longtemps possible.</p>
+            <button onclick="demarrerMonChronoStatique()" style="width:100%; background:#03a9f4; color:#fff;">Démarrer le Chrono</button>
+        </div>
+    </div>
+
     <div id="ecranChallengers" class="ecran">
         <h2 id="titreBonjour" style="margin-top: 20px;">Bonjour !</h2>
-        <p style="font-size:14px; color:#aaa;">Qui vas-tu affronter aujourd'hui ?</p>
+        <p style="font-size:14px; color:#aaa;">Ton Score de Puissance : <span id="monScorePuissance" style="color:#ffeb3b; font-weight:bold;">⚡ 0</span></p>
 
         <div class="form-group" style="width:100%; flex-direction:row; gap:5px; margin-top:20px;">
             <input type="text" id="recherchePseudo" placeholder="Ajouter un pseudo...">
@@ -144,61 +170,45 @@
         </div>
     </div>
 
-    <div id="defiModal" class="modal">
+    <div id="modalSelectionAmi" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
-            <span class="btn-fermer-modal" onclick="document.getElementById('defiModal').style.display='none'">&times;</span>
-            <h2 style="color:#ffeb3b; margin-top:10px;">Préparer le défi</h2>
+            <span class="btn-fermer-modal" onclick="document.getElementById('modalSelectionAmi').style.display='none'">&times;</span>
+            <h2 style="color:#ffeb3b; margin-top:10px;">À qui le tour ?</h2>
             
-            <div class="option-defi">
-                <h4 style="margin:0 0 10px 0; color:#ffeb3b; text-align:center;">Plaque Marble</h4>
-                <label style="font-size:12px; color:#aaa;">Modèle de plaque :</label>
-                <select id="selectPlaque" style="margin-bottom:10px;">
-                    <option value="Zig Horizontale">Zig Horizontale</option>
-                    <option value="Zig Verticale">Zig Verticale</option>
-                    <option value="Spiral">Spiral</option>
-                </select>
-                <label style="font-size:12px; color:#aaa;">Répétitions cibles :</label>
-                <input type="number" id="inputReps" value="5" min="1" style="margin-bottom:15px; text-align:center;">
-                <button onclick="preparerEnvoiPlaque()" style="width:100%;">Lancer mon effort</button>
+            <p style="font-size:14px; color:#aaa;">Ta performance : <br><b id="perfScoreDisplay" style="color:#fff; font-size:18px;">...</b></p>
+            
+            <select id="selectAmiDefi" onchange="updateCoefAuto()" style="margin-top:15px; margin-bottom:20px; text-align:center;"></select>
+            
+            <div style="background:#111; padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid #333;">
+                <label style="font-size:13px; color:#aaa;">Coefficient appliqué : <b id="coefValDisplay" style="color:#ffeb3b;">x1.0</b></label>
+                <input type="range" id="sliderCoef" min="0.5" max="2" step="0.1" value="1" oninput="updateCoefManual()" style="margin-top:10px;">
+                <p style="font-size:11px; color:#666; margin-top:5px;">Ajuste le curseur pour lui donner un handicap (bluff) ou l'aider !</p>
             </div>
             
-            <div class="option-defi" style="text-align:center;">
-                <h4 style="margin:0; color:#ffeb3b;">Statique</h4>
-                <div style="font-weight: bold; font-size: 20px; margin: 5px 0;"><span id="valStatique">1</span> MIN</div>
-                <button onclick="ajouterMinute()" style="padding:5px 10px; font-size:12px; background:#444; color:white;">+1 MIN</button>
-                <button onclick="preparerEnvoiStatique()" style="width:100%; margin-top:10px;">Démarrer le chrono</button>
-            </div>
-        </div>
-    </div>
+            <p style="color:#ff9800; font-weight:bold; font-size:15px; margin-bottom:20px;">Objectif final imposé :<br><span id="targetAdversaireDisplay" style="font-size:22px; color:#fff;">...</span></p>
 
-    <div id="senderResultModal" class="modal">
-        <div class="modal-content">
-            <span class="btn-fermer-modal" onclick="document.getElementById('senderResultModal').style.display='none'">&times;</span>
-            <h2 style="color:#ffeb3b; margin-top:10px;">Ton résultat</h2>
-            <p style="color:#aaa; font-size:14px;" id="senderResultText"></p>
-
-            <div style="margin: 20px 0; font-size:14px; color:#aaa; text-align:center;">
-                <input type="checkbox" id="checkSmsEnvoi"> 
-                <label for="checkSmsEnvoi">Prévenir l'adversaire par SMS</label>
+            <div style="margin-bottom:20px; font-size:14px; color:#aaa;">
+                <input type="checkbox" id="checkSmsEnvoiPerf"> Prévenir par SMS
             </div>
 
-            <div id="senderResultButtons"></div>
+            <button onclick="envoyerDefiFinalPostPerf()" style="width:100%;">Lancer le défi !</button>
         </div>
     </div>
 
     <div id="chronoModal" class="modal">
         <div class="modal-content">
-            <h2 style="color:#03a9f4; margin-top:10px;">En plein effort !</h2>
+            <h2 id="chronoTitre" style="color:#03a9f4; margin-top:10px;">En plein effort !</h2>
             <div id="chronoAffichage">00:00</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="btnChronoPause" style="flex:1; background:#ff9800; color:#fff; padding:15px;">⏸️ PAUSE</button>
-                <button id="btnChronoEchouer" style="flex:1; background:#dc3545; color:#fff; padding:15px;">❌ ÉCHOUER</button>
-            </div>
+            <div id="chronoActions" style="display:flex; gap:10px; margin-top:20px;">
+                </div>
         </div>
     </div>
 
     <div id="navBar" class="nav-bottom">
-        <button id="tabChallengers" class="actif" onclick="changerOnglet('ecranChallengers')">
+        <button id="tabArene" class="actif" onclick="changerOnglet('ecranArene')">
+            <span class="nav-icon">🏋️</span> Arène
+        </button>
+        <button id="tabChallengers" onclick="changerOnglet('ecranChallengers')">
             <span class="nav-icon">👥</span>
             <div>Amis <span id="badgeNavAmis" class="badge" style="display:none; background:#03a9f4;">0</span></div>
         </button>
@@ -232,21 +242,25 @@
         
         let monProfil = JSON.parse(localStorage.getItem('doab_profil'));
         let mesAmis = [];
-        let cibleActuelle = null;
-        let tempsStatique = 1;
         let amiSelectionneId = null;
 
         let defisActiveRecus = [];
         let defisEnvoyes = []; 
 
+        // Variables pour la performance actuelle
+        let perfActuelle = { typeExercice: '', details: '', scoreBrut: 0, scoreTarget: 0, coefFinal: 1 };
+
+        // Variables Chrono
         let chronoInterval = null;
-        let tempsRestantSecondes = 0;
+        let tempsSecondesGlobal = 0; 
         let tempsTotalInitial = 0;
         let chronoEnPause = false;
+        let contexteChrono = 'entrainement'; // 'entrainement' (UP) ou 'reception' (DOWN)
         let defiChronoActuel = null;
         let deQuiChronoActuel = null;
-        let contexteChrono = 'reception'; // 'envoi' ou 'reception'
+        let coefChronoActuel = 1;
 
+        // NAVIGATION
         function changerEcran(id) {
             document.querySelectorAll('.ecran').forEach(e => e.classList.remove('actif'));
             document.getElementById(id).classList.add('actif');
@@ -257,10 +271,12 @@
             document.querySelectorAll('.ecran').forEach(e => e.classList.remove('actif'));
             document.getElementById(idEcran).classList.add('actif');
             
+            document.getElementById('tabArene').classList.remove('actif');
             document.getElementById('tabChallengers').classList.remove('actif');
             document.getElementById('tabDefis').classList.remove('actif');
             document.getElementById('tabStatistiques').classList.remove('actif');
             
+            if(idEcran === 'ecranArene') document.getElementById('tabArene').classList.add('actif');
             if(idEcran === 'ecranChallengers') document.getElementById('tabChallengers').classList.add('actif');
             if(idEcran === 'ecranDefis') document.getElementById('tabDefis').classList.add('actif');
             if(idEcran === 'ecranStatistiques') document.getElementById('tabStatistiques').classList.add('actif');
@@ -270,12 +286,18 @@
         document.getElementById('btnAllerInscription').onclick = () => changerEcran('ecranInscription');
         document.querySelectorAll('.btn-retour').forEach(b => b.onclick = () => changerEcran('ecranAccueil'));
 
+        // CALCUL SCORE DE PUISSANCE ⚡
+        function getPowerScore(maxPlaques, maxStatique) {
+            return (parseInt(maxPlaques) || 0) * 10 + (parseInt(maxStatique) || 0);
+        }
+
+        // AUTHENTIFICATION
         document.getElementById('btnCreerProfil').onclick = async () => {
             const nom = document.getElementById('monNom').value.trim();
             const tel = document.getElementById('monTel').value.trim();
             const mdp = document.getElementById('monMdp').value.trim();
             if(!nom || !tel || mdp.length < 4) return alert("Champs incomplets");
-            await addDoc(colRef, { nom, nomLower: nom.toLowerCase(), tel, mdp, amis: [] });
+            await addDoc(colRef, { nom, nomLower: nom.toLowerCase(), tel, mdp, amis: [], maxPlaques: 0, maxStatique: 0 });
             alert("Compte créé !");
             changerEcran('ecranConnexion');
         };
@@ -287,11 +309,180 @@
             const snap = await getDocs(q);
             if(snap.empty || snap.docs[0].data().mdp !== mdp) return alert("Erreur identifiants");
             const u = snap.docs[0].data();
-            monProfil = { id: snap.docs[0].id, nom: u.nom, tel: u.tel };
+            monProfil = { id: snap.docs[0].id, nom: u.nom, tel: u.tel, maxPlaques: u.maxPlaques || 0, maxStatique: u.maxStatique || 0 };
             localStorage.setItem('doab_profil', JSON.stringify(monProfil));
             location.reload();
         };
 
+        // --- PARTIE 1 : RÉALISER LA PERFORMANCE (ARÈNE) ---
+        window.validerMaPlaque = async () => {
+            const typePlaque = document.getElementById('areneSelectPlaque').value;
+            const reps = parseInt(document.getElementById('areneInputReps').value);
+            if(!reps || reps <= 0) return alert("Indique un nombre valide de répétitions !");
+
+            if(reps > (monProfil.maxPlaques || 0)) {
+                await updateDoc(doc(db, "challengers", monProfil.id), { maxPlaques: reps });
+                monProfil.maxPlaques = reps;
+            }
+
+            perfActuelle = { typeExercice: 'Plaque Marble', details: typePlaque, scoreBrut: reps };
+            ouvrirModalSelectionAmi();
+        };
+
+        window.demarrerMonChronoStatique = () => {
+            tempsSecondesGlobal = 0;
+            contexteChrono = 'entrainement';
+            
+            document.getElementById('chronoTitre').innerText = "Tiens bon !";
+            document.getElementById('chronoAffichage').innerText = "00:00";
+            document.getElementById('chronoActions').innerHTML = `
+                <button onclick="stopperMonChrono()" style="width:100%; background:#dc3545; color:#fff; padding:15px; font-weight:bold;">🛑 J'AI CRAQUÉ (STOP)</button>
+            `;
+            
+            document.getElementById('chronoModal').style.display = "flex";
+            clearInterval(chronoInterval);
+            chronoInterval = setInterval(() => {
+                tempsSecondesGlobal++;
+                let m = Math.floor(tempsSecondesGlobal / 60);
+                let s = tempsSecondesGlobal % 60;
+                document.getElementById('chronoAffichage').innerText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+            }, 1000);
+        };
+
+        window.stopperMonChrono = async () => {
+            clearInterval(chronoInterval);
+            document.getElementById('chronoModal').style.display = "none";
+            
+            if(tempsSecondesGlobal === 0) return alert("Tu n'as même pas tenu 1 seconde !");
+            
+            if(tempsSecondesGlobal > (monProfil.maxStatique || 0)) {
+                await updateDoc(doc(db, "challengers", monProfil.id), { maxStatique: tempsSecondesGlobal });
+                monProfil.maxStatique = tempsSecondesGlobal;
+            }
+
+            perfActuelle = { typeExercice: 'Statique', details: '', scoreBrut: tempsSecondesGlobal };
+            ouvrirModalSelectionAmi();
+        };
+
+        // --- PARTIE 2 : CHOISIR L'AMI ET LE COEF ---
+        window.ouvrirModalSelectionAmi = (preselectPseudo = null) => {
+            const select = document.getElementById('selectAmiDefi');
+            select.innerHTML = "";
+            if(mesAmis.length === 0) {
+                alert("Tu dois d'abord ajouter des challengers dans l'onglet 'Amis' !");
+                changerOnglet('ecranChallengers');
+                return;
+            }
+
+            // Mettre à jour l'affichage de MA perf
+            let textPerf = "";
+            if(perfActuelle.typeExercice === 'Statique') {
+                let m = Math.floor(perfActuelle.scoreBrut / 60);
+                let s = perfActuelle.scoreBrut % 60;
+                textPerf = (m > 0 ? m + "m " : "") + s + "s (" + perfActuelle.typeExercice + ")";
+            } else {
+                textPerf = perfActuelle.scoreBrut + " reps (" + perfActuelle.details + ")";
+            }
+            document.getElementById('perfScoreDisplay').innerText = textPerf;
+
+            // Remplir la liste déroulante
+            mesAmis.forEach(ami => {
+                const opt = document.createElement('option');
+                opt.value = ami.id;
+                let pScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
+                opt.innerText = `${ami.nom} (⚡${pScore})`;
+                select.appendChild(opt);
+            });
+
+            if(preselectPseudo) {
+                const targetAmi = mesAmis.find(a => a.nom.toLowerCase() === preselectPseudo.toLowerCase());
+                if(targetAmi) select.value = targetAmi.id;
+            }
+
+            document.getElementById('checkSmsEnvoiPerf').checked = false;
+            updateCoefAuto();
+            document.getElementById('modalSelectionAmi').style.display = "flex";
+        };
+
+        window.updateCoefAuto = () => {
+            const amiId = document.getElementById('selectAmiDefi').value;
+            const ami = mesAmis.find(a => a.id === amiId);
+            
+            let myScore = getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
+            let amiScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
+            
+            let coef = 1.0;
+            if(myScore > 0 && amiScore > 0) { coef = amiScore / myScore; }
+            
+            coef = Math.max(0.5, Math.min(2.0, coef));
+            coef = Math.round(coef * 10) / 10;
+            
+            document.getElementById('sliderCoef').value = coef;
+            updateCoefManual();
+        };
+
+        window.updateCoefManual = () => {
+            const coef = parseFloat(document.getElementById('sliderCoef').value);
+            document.getElementById('coefValDisplay').innerText = "x" + coef.toFixed(1);
+            
+            let target = Math.round(perfActuelle.scoreBrut * coef);
+            if(target < 1) target = 1;
+            perfActuelle.scoreTarget = target;
+            perfActuelle.coefFinal = coef;
+
+            if(perfActuelle.typeExercice === 'Statique') {
+                let m = Math.floor(target / 60);
+                let s = target % 60;
+                let timeStr = (m > 0 ? m + "m " : "") + s + "s";
+                document.getElementById('targetAdversaireDisplay').innerText = timeStr + " (Statique)";
+            } else {
+                document.getElementById('targetAdversaireDisplay').innerText = target + " reps (" + perfActuelle.details + ")";
+            }
+        };
+
+        window.envoyerDefiFinalPostPerf = async () => {
+            const amiId = document.getElementById('selectAmiDefi').value;
+            const ami = mesAmis.find(a => a.id === amiId);
+            if(!ami) return;
+
+            let typeStr = "";
+            let isChrono = false;
+            let tempsSec = null;
+
+            if(perfActuelle.typeExercice === 'Statique') {
+                typeStr = perfActuelle.scoreTarget + "s Statique"; 
+                isChrono = true;
+                tempsSec = perfActuelle.scoreTarget;
+            } else {
+                typeStr = perfActuelle.scoreTarget + "x Plaque Marble (" + perfActuelle.details + ")";
+            }
+
+            try {
+                await addDoc(defisRef, { 
+                    de: monProfil.nom, 
+                    pour: ami.nom, 
+                    type: typeStr, 
+                    statut: "en attente", 
+                    date: Date.now(), 
+                    estChrono: isChrono,
+                    tempsSecondes: tempsSec,
+                    coefApplique: perfActuelle.coefFinal,
+                    scoreBrutExpediteur: perfActuelle.scoreBrut 
+                });
+
+                if(document.getElementById('checkSmsEnvoiPerf').checked) {
+                    const lien = "https://anthony37s.github.io/doab/";
+                    window.location.href = `sms:${ami.tel}?body=${encodeURIComponent("DOAB: J'ai fait une performance ! Ton objectif : " + typeStr + ". Joue ici : " + lien)}`;
+                }
+                
+                document.getElementById('modalSelectionAmi').style.display = "none";
+                document.getElementById('areneInputReps').value = ""; 
+                changerOnglet('ecranDefis');
+                alert("Le défi a été envoyé avec succès !");
+            } catch(e) { alert("Erreur : " + e.message); }
+        };
+
+        // --- GESTION DES AMIS ET DEMANDES ---
         document.getElementById('btnAjouterAmi').onclick = async () => {
             const pseudo = document.getElementById('recherchePseudo').value.trim().toLowerCase();
             if(!pseudo) return;
@@ -319,7 +510,7 @@
             try {
                 await deleteDoc(doc(db, "demandes", demandeId));
                 if(!mesAmis.find(a => a.id === deId)) {
-                    mesAmis.push({ id: deId, nom: deNom, tel: deTel, favori: false });
+                    mesAmis.push({ id: deId, nom: deNom, tel: deTel, favori: false, maxPlaques: 0, maxStatique: 0 });
                     await updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
                 }
                 const aDocRef = doc(db, "challengers", deId);
@@ -334,22 +525,17 @@
             } catch(e) { console.error(e); }
         };
 
-        window.refuserAmi = async (demandeId) => {
-            if(confirm("Refuser cette demande ?")) await deleteDoc(doc(db, "demandes", demandeId));
-        };
+        window.refuserAmi = async (demandeId) => { if(confirm("Refuser cette demande ?")) await deleteDoc(doc(db, "demandes", demandeId)); };
 
         window.ouvrirMenuAmi = (id, nom) => {
             amiSelectionneId = id;
             document.getElementById('amiModalNom').innerText = nom;
-            
             const ami = mesAmis.find(a => a.id === id);
             const btnFav = document.getElementById('btnFavoriAmi');
             if(ami && ami.favori) {
-                btnFav.innerText = "Retirer des favoris";
-                btnFav.style.background = "#444";
+                btnFav.innerText = "Retirer des favoris"; btnFav.style.background = "#444";
             } else {
-                btnFav.innerText = "⭐ Mettre en favori";
-                btnFav.style.background = "#ff9800";
+                btnFav.innerText = "⭐ Mettre en favori"; btnFav.style.background = "#ff9800";
             }
             document.getElementById('amiModal').style.display = "flex";
         };
@@ -385,12 +571,15 @@
                 mesAmis.forEach(ami => {
                     const li = document.createElement('li');
                     const iconeFav = ami.favori ? "⭐ " : "";
+                    const pScore = getPowerScore(ami.maxPlaques, ami.maxStatique);
+                    
                     li.innerHTML = `
-                        <div style="display:flex; align-items:center;">
+                        <div style="display:flex; flex-direction:column; align-items:flex-start;">
                             <span style="font-weight:bold; font-size:18px;">${iconeFav}${ami.nom}</span>
+                            <span style="font-size:12px; color:#aaa;">Score de Puissance : <b style="color:#ffeb3b;">⚡ ${pScore}</b></span>
                         </div>
                         <div style="display:flex; align-items:center; gap:5px;">
-                            <button onclick="ouvrirDefi('${ami.nom}', '${ami.tel}')" style="padding: 8px 15px; font-size:14px;">Défier</button>
+                            <button onclick="changerOnglet('ecranArene')" style="padding: 8px 15px; font-size:12px;">Défier</button>
                             <button class="menu-dots" onclick="ouvrirMenuAmi('${ami.id}', '${ami.nom}')">⋮</button>
                         </div>
                     `;
@@ -399,175 +588,116 @@
             }
         }
 
-        window.ouvrirDefi = (nom, tel) => {
-            cibleActuelle = { nom, tel };
-            tempsStatique = 1;
-            document.getElementById('valStatique').innerText = tempsStatique;
-            document.getElementById('checkSmsEnvoi').checked = false; // Décoché par défaut
-            document.getElementById('defiModal').style.display = "flex";
-        };
-
-        window.ajouterMinute = () => { tempsStatique++; document.getElementById('valStatique').innerText = tempsStatique; };
-
-        // --- ENVOI PLAQUE (EXPÉDITEUR) ---
-        window.preparerEnvoiPlaque = () => {
-            const typePlaque = document.getElementById('selectPlaque').value;
-            const reps = document.getElementById('inputReps').value;
-            document.getElementById('defiModal').style.display = "none";
-
-            document.getElementById('senderResultText').innerText = `As-tu réussi tes ${reps} répétitions sur la plaque ${typePlaque} ?`;
-            document.getElementById('senderResultButtons').innerHTML = `
-                <button onclick="finaliserEnvoiPlaque('${typePlaque}', ${reps}, true)" style="width:100%; background:#28a745; color:white; margin-bottom:10px;">✅ Défi réussi</button>
-                <button onclick="finaliserEnvoiPlaque('${typePlaque}', ${reps}, false)" style="width:100%; background:#dc3545; color:white;">❌ Défi échoué</button>
-            `;
-            document.getElementById('senderResultModal').style.display = "flex";
-        };
-
-        window.finaliserEnvoiPlaque = (typePlaque, repsCibles, reussi) => {
-            let repsFaites = repsCibles;
-            if(!reussi) {
-                let input = prompt("Combien de répétitions as-tu réalisées avant d'échouer ?");
-                if(input === null || input.trim() === "") return;
-                repsFaites = parseInt(input);
-            }
-            document.getElementById('senderResultModal').style.display = "none";
-            envoyerDefiFinal(`${repsFaites}x Plaque Marble (${typePlaque})`);
-        };
-
-        // --- ENVOI STATIQUE (EXPÉDITEUR) ---
-        window.preparerEnvoiStatique = () => {
-            const min = document.getElementById('valStatique').innerText;
-            document.getElementById('defiModal').style.display = "none";
-            lancerChronoEnvoi(min);
-        };
-
-        window.lancerChronoEnvoi = (minutesText) => {
-            const minutes = parseInt(minutesText);
-            tempsTotalInitial = minutes * 60;
-            tempsRestantSecondes = tempsTotalInitial;
-            chronoEnPause = false;
-            contexteChrono = 'envoi';
-
-            document.getElementById('btnChronoPause').innerText = "⏸️ PAUSE";
-            mettreAJourTexteChrono();
-            document.getElementById('chronoModal').style.display = "flex";
-
-            clearInterval(chronoInterval);
-            chronoInterval = setInterval(tickChrono, 1000);
-        };
-
-        window.lancerChronoReception = (defiId, deQui, tempsSecondes) => {
+        // --- GESTION RÉCEPTION ET VALIDATION ---
+        window.lancerChronoReception = (defiId, deQui, tempsSecondes, coefApplique) => {
             defiChronoActuel = defiId;
             deQuiChronoActuel = deQui;
+            coefChronoActuel = coefApplique || 1;
             tempsTotalInitial = parseInt(tempsSecondes);
-            tempsRestantSecondes = tempsTotalInitial;
+            tempsSecondesGlobal = tempsTotalInitial;
             chronoEnPause = false;
             contexteChrono = 'reception';
 
-            document.getElementById('btnChronoPause').innerText = "⏸️ PAUSE";
-            mettreAJourTexteChrono();
+            document.getElementById('chronoTitre').innerText = "Objectif : Tenir !";
+            document.getElementById('chronoActions').innerHTML = `
+                <button id="btnChronoPause" onclick="togglePauseChrono()" style="flex:1; background:#ff9800; color:#fff; padding:15px;">⏸️ PAUSE</button>
+                <button onclick="echouerChronoReception()" style="flex:1; background:#dc3545; color:#fff; padding:15px;">❌ ÉCHOUER</button>
+            `;
+            
+            mettreAJourTexteChronoDown();
             document.getElementById('chronoModal').style.display = "flex";
 
             clearInterval(chronoInterval);
-            chronoInterval = setInterval(tickChrono, 1000);
+            chronoInterval = setInterval(() => {
+                if(chronoEnPause) return;
+                tempsSecondesGlobal--;
+                mettreAJourTexteChronoDown();
+
+                if(tempsSecondesGlobal <= 0) {
+                    clearInterval(chronoInterval);
+                    document.getElementById('chronoModal').style.display = "none";
+                    relever(defiChronoActuel, deQuiChronoActuel, false, coefChronoActuel);
+                }
+            }, 1000);
         };
 
-        function tickChrono() {
-            if(chronoEnPause) return;
-            tempsRestantSecondes--;
-            mettreAJourTexteChrono();
-
-            if(tempsRestantSecondes <= 0) {
-                clearInterval(chronoInterval);
-                document.getElementById('chronoModal').style.display = "none";
-                
-                if(contexteChrono === 'envoi') {
-                    montrerResultatStatiqueEnvoi(tempsTotalInitial, true);
-                } else {
-                    alert("⏱️ Temps écoulé ! Défi brillamment réussi !");
-                    relever(defiChronoActuel, deQuiChronoActuel, false);
-                }
-            }
-        }
-
-        function mettreAJourTexteChrono() {
-            let m = Math.floor(tempsRestantSecondes / 60);
-            let s = tempsRestantSecondes % 60;
+        function mettreAJourTexteChronoDown() {
+            let m = Math.floor(tempsSecondesGlobal / 60);
+            let s = tempsSecondesGlobal % 60;
             document.getElementById('chronoAffichage').innerText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
         }
 
-        document.getElementById('btnChronoPause').onclick = () => {
+        window.togglePauseChrono = () => {
             chronoEnPause = !chronoEnPause;
             document.getElementById('btnChronoPause').innerText = chronoEnPause ? "▶️ REPRENDRE" : "⏸️ PAUSE";
         };
 
-        document.getElementById('btnChronoEchouer').onclick = async () => {
+        window.echouerChronoReception = async () => {
             clearInterval(chronoInterval);
             document.getElementById('chronoModal').style.display = "none";
-            const tempsFait = tempsTotalInitial - tempsRestantSecondes;
+            const tempsFait = tempsTotalInitial - tempsSecondesGlobal;
 
-            if(contexteChrono === 'envoi') {
-                montrerResultatStatiqueEnvoi(tempsFait, false);
-            } else {
-                let mFait = Math.floor(tempsFait / 60);
-                let sFait = tempsFait % 60;
-                let labelFait = (mFait > 0 ? mFait + "m " : "") + sFait + "s";
-                await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
+            let mFait = Math.floor(tempsFait / 60);
+            let sFait = tempsFait % 60;
+            let labelFait = (mFait > 0 ? mFait + "m " : "") + sFait + "s";
+            
+            await updateDoc(doc(db, "defis", defiChronoActuel), { statut: "échoué", detailsEchec: "A tenu " + labelFait, scoreEchecChrono: tempsFait });
+            
+            if(confirm(`Tu as tenu ${labelFait}. Veux-tu relancer la balle à ${deQuiChronoActuel} avec ce score de vengeance ?`)) {
+                perfActuelle = { typeExercice: 'Statique', details: '', scoreBrut: tempsFait };
+                ouvrirModalSelectionAmi(deQuiChronoActuel);
             }
         };
 
-        window.montrerResultatStatiqueEnvoi = (tempsFaitSecondes, reussi) => {
-            let mFait = Math.floor(tempsFaitSecondes / 60);
-            let sFait = tempsFaitSecondes % 60;
-            let labelFait = (mFait > 0 ? mFait + " min " : "") + (sFait > 0 ? sFait + " s" : "");
-            if(tempsFaitSecondes === 0) labelFait = "0 s";
-
-            let text = reussi ? `Félicitations ! Tu as tenu l'objectif.` : `Tu as tenu ${labelFait}. Ce sera le temps à battre pour ton adversaire.`;
-
-            document.getElementById('senderResultText').innerText = text;
-            document.getElementById('senderResultButtons').innerHTML = `
-                <button onclick="finaliserEnvoiStatique('${labelFait}', ${tempsFaitSecondes})" style="width:100%; background:#03a9f4; color:white;">Envoyer le défi (${labelFait})</button>
-            `;
-            document.getElementById('senderResultModal').style.display = "flex";
-        };
-
-        window.finaliserEnvoiStatique = (labelFait, tempsSecondes) => {
-            document.getElementById('senderResultModal').style.display = "none";
-            envoyerDefiFinal(`${labelFait} Statique`, true, tempsSecondes);
-        };
-
-        // --- ENVOI FINAL BDD & SMS ---
-        window.envoyerDefiFinal = async (type, estChrono = false, tempsSecondes = null) => {
-            try {
-                let dataDefi = { de: monProfil.nom, pour: cibleActuelle.nom, type, statut: "en attente", date: Date.now(), estChrono: estChrono };
-                if(estChrono && tempsSecondes !== null) dataDefi.tempsSecondes = tempsSecondes;
-
-                await addDoc(defisRef, dataDefi);
-
-                if(document.getElementById('checkSmsEnvoi').checked) {
-                    const lien = "https://anthony37s.github.io/doab/";
-                    window.location.href = `sms:${cibleActuelle.tel}?body=${encodeURIComponent("DOAB: Nouveau défi ! Objectif : " + type + ". Joue ici : " + lien)}`;
-                }
-                changerOnglet('ecranDefis');
-            } catch(e) { alert("Erreur : " + e.message); }
-        };
-
-        // --- GESTION ÉCHEC RÉCEPTION PLAQUE ---
-        window.echouerPlaque = async (defiId) => {
+        window.echouerPlaque = async (defiId, deQui, detailsComplets) => {
             const reps = prompt("Échec ! Combien de répétitions as-tu réussi au total ?");
             if(reps !== null && reps.trim() !== "") {
                 await updateDoc(doc(db, "defis", defiId), { statut: "échoué", detailsEchec: "A fait " + reps + " reps" });
+                
+                if(confirm(`Tu as fait ${reps} reps. Veux-tu relancer le défi à ${deQui} avec ce score de vengeance ?`)) {
+                    let plaqueType = "Classique";
+                    let match = detailsComplets.match(/\(([^)]+)\)/);
+                    if(match) plaqueType = match[1];
+
+                    perfActuelle = { typeExercice: 'Plaque Marble', details: plaqueType, scoreBrut: parseInt(reps) };
+                    ouvrirModalSelectionAmi(deQui);
+                }
             }
         };
 
-        window.renvoyerDefiScore = async (pourNom, scoreTexte) => {
-            try {
-                cibleActuelle = mesAmis.find(a => a.nom.toLowerCase() === pourNom.toLowerCase());
-                if(!cibleActuelle) return alert("Ami introuvable pour le retour.");
-                await addDoc(defisRef, { de: monProfil.nom, pour: cibleActuelle.nom, type: `Battre mon score : ${scoreTexte}`, statut: "en attente", date: Date.now() });
-                alert("Défi retour envoyé avec votre score !");
-                changerOnglet('ecranDefis');
-            } catch (e) { console.error(e); }
+        window.changerStatutDefi = async (id, nouveauStatut) => { await updateDoc(doc(db, "defis", id), { statut: nouveauStatut }); };
+
+        window.relever = async (id, deQui, avecSms, coefApplique = 1) => {
+            await updateDoc(doc(db, "defis", id), { statut: "relevé" });
+            
+            let msgBonus = "";
+            if(coefApplique && coefApplique !== 1) {
+                msgBonus = `\n\nPour info, ton adversaire t'avait mis un coefficient de x${coefApplique} pour te tester !`;
+            }
+
+            const q = query(colRef, where("nom", "==", deQui));
+            const snap = await getDocs(q);
+            if(!snap.empty) {
+                const lien = "https://anthony37s.github.io/doab/";
+                if(confirm("DÉFI ACCOMPLI !" + msgBonus + "\n\nVoulez-vous envoyer un SMS pour le narguer ?")) {
+                    window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: J'ai pulvérisé ton défi ! 💪 À ton tour ! " + lien)}`;
+                }
+            } else {
+                alert("DÉFI ACCOMPLI !" + msgBonus);
+            }
+        };
+
+        window.renvoyerDefiScore = async (pourNom, scoreTexte, tempsSecondes, isChrono) => {
+            // Action depuis l'historique "Défis envoyés" pour relancer suite à l'échec d'un adversaire
+            let typeExo = isChrono ? "Statique" : "Plaque Marble";
+            let repsBrutes = parseInt(scoreTexte.match(/\d+/)[0]);
+            
+            if(isChrono) {
+                perfActuelle = { typeExercice: typeExo, details: '', scoreBrut: tempsSecondes };
+            } else {
+                perfActuelle = { typeExercice: typeExo, details: 'Classique', scoreBrut: repsBrutes };
+            }
+            ouvrirModalSelectionAmi(pourNom);
         };
 
         function actualiserInterfaceDefis() {
@@ -587,17 +717,20 @@
                 } else {
                     li.classList.add('defi-en-cours');
                     let boutonAction = "";
+                    let leCoef = d.coefApplique ? d.coefApplique : 1;
                     
                     if(d.estChrono && d.tempsSecondes !== undefined) {
                         let min = Math.floor(d.tempsSecondes / 60);
                         let sec = d.tempsSecondes % 60;
                         let labelBtn = (min > 0 ? min + "m " : "") + sec + "s";
-                        boutonAction = `<button onclick="lancerChronoReception('${d.id}', '${d.de}', ${d.tempsSecondes})" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO (${labelBtn})</button>`;
+                        boutonAction = `<button onclick="lancerChronoReception('${d.id}', '${d.de}', ${d.tempsSecondes}, ${leCoef})" style="width:100%; background:#03a9f4; color:#fff; padding:12px; margin-bottom:10px; font-size:14px;">⏱️ DÉMARRER CHRONO (${labelBtn})</button>`;
                     } else {
+                        // Échapper les guillemets pour l'appel fonction
+                        let detailsStr = d.type.replace(/'/g, "\\'");
                         boutonAction = `
                         <div style="display:flex; gap:5px; width:100%;">
-                            <button onclick="relever('${d.id}', '${d.de}', false)" style="background:#28a745; flex:1; font-size:12px;">✅ DÉFI VALIDÉ</button>
-                            <button onclick="echouerPlaque('${d.id}')" style="background:#dc3545; flex:1; font-size:12px;">❌ ÉCHOUER</button>
+                            <button onclick="relever('${d.id}', '${d.de}', false, ${leCoef})" style="background:#28a745; flex:1; font-size:12px;">✅ DÉFI VALIDÉ</button>
+                            <button onclick="echouerPlaque('${d.id}', '${d.de}', '${detailsStr}')" style="background:#dc3545; flex:1; font-size:12px;">❌ ÉCHOUER</button>
                         </div>`;
                     }
 
@@ -620,13 +753,17 @@
                 
                 if (d.statut === "en attente") { texteStatut = "⏳ En attente de réalisation"; couleurTexte = "#aaa"; }
                 else if (d.statut === "en cours") { texteStatut = "🔥 Défi en cours !"; couleurTexte = "#ff9800"; }
-                else if (d.statut === "relevé") { texteStatut = "✅ Défi validé !"; couleurTexte = "#28a745"; li.classList.add('defi-termine'); }
+                else if (d.statut === "relevé") { texteStatut = "✅ Défi validé par l'adversaire !"; couleurTexte = "#28a745"; li.classList.add('defi-termine'); }
                 else if (d.statut === "échoué") { 
                     texteStatut = "❌ Défi échoué. " + (d.detailsEchec ? d.detailsEchec : ""); 
                     couleurTexte = "#dc3545"; 
                     li.classList.add('defi-echoue');
                     if(d.detailsEchec) {
-                        boutonRetour = `<button onclick="renvoyerDefiScore('${d.pour}', '${d.detailsEchec}')" style="margin-top:10px; padding:5px; font-size:12px; background:#fff; color:#121212;">Défier en retour avec ce score</button>`;
+                        // Permettre de relancer le joueur sur son échec (optionnel)
+                        let leTps = d.scoreEchecChrono || 0;
+                        let chronoBool = d.estChrono ? 'true' : 'false';
+                        let detailEchecTxt = d.detailsEchec.replace(/'/g, "\\'");
+                        boutonRetour = `<button onclick="renvoyerDefiScore('${d.pour}', '${detailEchecTxt}', ${leTps}, ${chronoBool})" style="margin-top:10px; padding:5px; font-size:12px; background:#fff; color:#121212;">Le redéfier avec son score d'échec</button>`;
                     }
                 }
                 
@@ -644,9 +781,12 @@
             else { badge.style.display = "none"; }
         }
 
+        // --- INIT PRINCIPAL ---
         if(monProfil && monProfil.nom && monProfil.id) {
             document.getElementById('titreBonjour').innerText = "Salut " + monProfil.nom;
-            changerOnglet('ecranChallengers'); 
+            document.getElementById('monScorePuissance').innerText = "⚡ " + getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
+            
+            changerOnglet('ecranArene'); 
             document.getElementById('navBar').style.display = 'flex'; 
 
             const qDemandesRecues = query(demandesRef, where("pourLower", "==", monProfil.nom.toLowerCase()), where("statut", "==", "en attente"));
@@ -680,10 +820,32 @@
                 if(docSnap.exists()) {
                     const data = docSnap.data();
                     mesAmis = data.amis || [];
+                    monProfil.maxPlaques = data.maxPlaques || 0;
+                    monProfil.maxStatique = data.maxStatique || 0;
+                    
+                    document.getElementById('monScorePuissance').innerText = "⚡ " + getPowerScore(monProfil.maxPlaques, monProfil.maxStatique);
                     document.getElementById('editNom').value = data.nom;
                     document.getElementById('editTel').value = data.tel;
                     document.getElementById('editMdp').value = data.mdp;
-                    renderListeAmi();
+                    
+                    getDocs(colRef).then(snapChallengers => {
+                        let aChange = false;
+                        snapChallengers.forEach(docC => {
+                            let ami = mesAmis.find(a => a.id === docC.id);
+                            if(ami) {
+                                let dC = docC.data();
+                                if(ami.nom !== dC.nom || ami.tel !== dC.tel || ami.maxPlaques !== dC.maxPlaques || ami.maxStatique !== dC.maxStatique) {
+                                    ami.nom = dC.nom;
+                                    ami.tel = dC.tel;
+                                    ami.maxPlaques = dC.maxPlaques || 0;
+                                    ami.maxStatique = dC.maxStatique || 0;
+                                    aChange = true;
+                                }
+                            }
+                        });
+                        if(aChange) updateDoc(doc(db, "challengers", monProfil.id), { amis: mesAmis });
+                        renderListeAmi();
+                    });
                 }
             });
 
@@ -741,20 +903,6 @@
                 alert("Profil mis à jour !");
                 location.reload();
             } catch(e) { alert("Erreur : " + e.message); }
-        };
-
-        window.changerStatutDefi = async (id, nouveauStatut) => { await updateDoc(doc(db, "defis", id), { statut: nouveauStatut }); };
-
-        window.relever = async (id, deQui, avecSms) => {
-            await updateDoc(doc(db, "defis", id), { statut: "relevé" });
-            const q = query(colRef, where("nom", "==", deQui));
-            const snap = await getDocs(q);
-            if(!snap.empty) {
-                const lien = "https://anthony37s.github.io/doab/";
-                if(confirm("Défi relevé ! Voulez-vous envoyer un SMS à votre adversaire ?")) {
-                    window.location.href = `sms:${snap.docs[0].data().tel}?body=${encodeURIComponent("DOAB: Je viens de terrasser ton défi ! 💪 Joue ici : " + lien)}`;
-                }
-            }
         };
 
         document.getElementById('btnDeconnexion').onclick = () => { localStorage.clear(); location.reload(); };
